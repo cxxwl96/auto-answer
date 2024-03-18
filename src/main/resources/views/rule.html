@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="../assets/css/index.css">
+    <link rel="stylesheet" href="../assets/css/rule.css">
+    <style>
+        [v-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div v-if="survey?.subjects?.length>0" v-cloak>
+        <div class="headsplitdiv"></div>
+        <div class="page">
+            <div class="vote-header">
+                <div id="toptitle">
+                    <h1 class="htitle" id="htitle">{{ survey.topic }}</h1>
+                </div>
+            </div>
+            <div id="divContent">
+                <div id="divDesc" class="formfield">
+                <span class="description">
+                    {{ survey.description }}
+                </span>
+                </div>
+                <div v-for="subject in survey.subjects" :key="subject.no">
+                    <!-- 题目 -->
+                    <el-row>
+                        <el-col :span="24">
+                            <p><span class="topichtml topichtml-type">【{{ subject.type }}】</span><span
+                                    class="topichtml">{{ subject.no }}.{{ subject.question }}</span>
+                            </p>
+                        </el-col>
+                    </el-row>
+                    <!-- 单选题、多选题、填空题 -->
+                    <div v-if="subject.type==='单选题' || subject.type==='多选题' || subject.type==='填空题'">
+                        <el-row v-if="subject.type==='填空题'" class="option-content">
+                            <el-alert
+                                    title="提示：该题为填空题，你可以填写多个答案并制定选择率及规则，最终答案会以单选形式生成"
+                                    type="warning"></el-alert>
+                            <el-button type="primary" size="small" style="margin-top: 10px"
+                                       @click="addOption(subject.options)">添加选项
+                            </el-button>
+                        </el-row>
+                        <div v-for="(option, i) in subject.options" :key="i">
+                            <el-row class="option-content">
+                                <el-col :span="8" v-if="subject.type==='单选题' || subject.type==='多选题'">
+                                    <el-radio v-if="subject.type==='单选题'" :label="option.tab" disabled>
+                                        {{ option.tab }}.{{ option.content }}
+                                    </el-radio>
+                                    <el-checkbox v-else-if="subject.type==='多选题'"
+                                                 :label="option.tab+'.'+option.content"
+                                                 disabled>
+                                    </el-checkbox>
+                                </el-col>
+                                <el-col :span="6" v-if="subject.type==='填空题'">
+                                    {{ option.tab }}.
+                                    <el-input size="mini" placeholder="填空答案" clearable class="el-input-tiankong"
+                                              v-model="option.content"></el-input>
+                                </el-col>
+                                <el-col :span="2" v-if="subject.type==='填空题'">
+                                    <a class="btn" @click="delOption(subject.options, i)">删除选项</a>
+                                </el-col>
+                                <el-col :span="16">
+                                    <!-- 规则条件 -->
+                                    <el-table :data="option.rules" :cell-class-name="tableCellClassName">
+                                        <el-table-column>
+                                            <template slot="header" slot-scope="scope">
+                                                <p style="margin: 0; opacity: .8">
+                                                    <b>规则条件：</b><span style="font-weight: 400">第一个满足规则条件的选择率优先被使用，所有条件都不满足则使用默认选择率</span>
+                                                </p>
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <el-input size="mini" placeholder="填写能选择该选项的条件" clearable
+                                                          v-model="scope.row.condition"></el-input>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column width="350" align="center">
+                                            <template slot="header" slot-scope="scope">
+                                                <el-slider v-model="option.defaultSelectance"
+                                                           class="selectance selectance-default"></el-slider>
+                                                <span class="selectance-right">{{ option.defaultSelectance }}%</span>
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <el-slider v-model="scope.row.selectance"
+                                                           class="selectance"></el-slider>
+                                                <span class="selectance-right">{{ scope.row.selectance }}%</span>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column width="50" align="center">
+                                            <template slot="header" slot-scope="scope">
+                                                <a class="btn" @click="addRule(option.rules)">添加</a>
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <a class="btn"
+                                                   @click="delRule(option.rules, scope.row.index)">删除</a>
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+                                </el-col>
+                            </el-row>
+                            <el-divider v-if="i<subject?.options?.length-1"></el-divider>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footsubmit">
+            <el-button size="small" style="width: 300px" @click="preAnswers">预览答案</el-button>
+            <el-button type="text" @click="generateAnswers" v-if="surveyAnswers?.length > 0">重新生成答案</el-button>
+            <el-button type="primary" size="small" style="width: 300px" @click="saveSurveyAndAnswers">保存答案
+            </el-button>
+        </div>
+        <div class="headsplitdiv"></div>
+    </div>
+    <el-empty v-else description="无数据，请先解析问卷"></el-empty>
+    <el-dialog title="答案预览" :visible.sync="dialogTableVisible" :fullscreen="dialogFullscreen" width="60%"
+               :lock-scroll="false" :close-on-click-modal="false" :close-on-press-escape="false"
+    >
+        <template slot="title">
+            <span class="el-dialog__title">答案预览</span>
+            <button aria-label="Close" class="el-dialog__headerbtn" style="right: 60px"
+                    @click="dialogFullscreen = !dialogFullscreen">
+                <i class="el-dialog__close el-icon el-icon-full-screen"></i>
+            </button>
+        </template>
+        <el-table :data="surveyAnswers" :cell-class-name="tableCellClassName" height="60vh">
+            <el-table-column align="center" fixed>
+                <template slot-scope="scope">
+                    <div>{{ '第' + (scope.row.index + 1) + '份' }}</div>
+                </template>
+            </el-table-column>
+            <el-table-column v-for="(surveyAnswer, i) in surveyAnswers[0]" :key="i" :label="'第'+(i+1)+'题'"
+                             align="center">
+                <template slot-scope="scope">
+                    <div v-if="scope.row[i]?.answers?.length>0">{{ scope.row[i].answers.join(',') }}</div>
+                    <div v-else style="color: rgba(255,0,0,0.84)">无</div>
+                </template>
+            </el-table-column>
+        </el-table>
+    </el-dialog>
+</div>
+
+
+</body>
+<script src="../assets/js/vue.js"></script>
+<script src="../assets/js/index.js"></script>
+<script>
+    var vue = new Vue({
+        el: '#app',
+        data: function () {
+            var dialogTableVisible = false;
+            var dialogFullscreen = false;
+
+            // 给单元格绑定横向和竖向的index，这样就能确定是哪一个单元格
+            function tableCellClassName({row, column, rowIndex, columnIndex}) {
+                row.index = rowIndex
+                column.index = columnIndex
+            }
+
+            // 添加规则
+            function addRule(rules) {
+                rules.push({"condition": "", "selectance": 0});
+            }
+
+            // 删除规则
+            function delRule(rules, index) {
+                console.log(index)
+                rules.splice(index, 1);
+            }
+
+            // 添加选项（填空题）
+            function addOption(options) {
+                options.push({
+                    "content": "",
+                    "rules": [{"condition": "", "selectance": 0}],
+                    "tab": String.fromCharCode(65 + options.length) + "",
+                })
+            }
+
+            // 删除选项（填空题）
+            function delOption(options, index) {
+                options.splice(index, 1);
+                for (let i = 0; i < options.length; i++) {
+                    options[i].tab = String.fromCharCode(65 + i) + "";
+                }
+            }
+
+            // 生成答案
+            function generateAnswers() {
+                // 调用JAVA生成答案
+                var result = surveyService.generateAnswers(JSON.stringify(vue.$data.survey));
+                var generateAnswersResult = JSON.parse(result);
+                if (generateAnswersResult?.code === 200) {
+                    // 检查答案是否填写完成
+                    var confirm = {
+                        msg: '答案生成成功，是否预览答案？',
+                        type: 'success',
+                        showConfirmButton: true,
+                    };
+                    result = surveyService.checkAnswers(JSON.stringify(generateAnswersResult?.data));
+                    var checkAnswersResult = JSON.parse(result);
+                    if (checkAnswersResult?.code !== 200) {
+                        if (checkAnswersResult?.data && checkAnswersResult?.data?.length > 0) {
+                            confirm.msg = '根据规则生成答案时存在以下题目答案未生成，请检查规则是否符合预期？<br/><span style="color: red">' + checkAnswersResult.data.join(',<br/>') + '</span>';
+                            confirm.type = 'warning';
+                        } else {
+                            confirm.msg = '生成答案失败。' + checkAnswersResult.msg;
+                            confirm.type = 'error';
+                            confirm.showConfirmButton = false;
+                        }
+                    }
+
+                    if (confirm.msg.length > 120) {
+                        confirm.msg = confirm.msg.substring(0, 120) + '...';
+                    }
+
+                    vue.$data.surveyAnswers = generateAnswersResult.data;
+
+                    if (!vue.$data.dialogTableVisible) {
+                        ELEMENT.MessageBox.confirm(confirm.msg, '提示', {
+                            confirmButtonText: '预览答案',
+                            cancelButtonText: '关闭',
+                            type: confirm.type,
+                            dangerouslyUseHTMLString: true,
+                            showConfirmButton: confirm.showConfirmButton,
+                        }).then(() => {
+                            // 显示答案预览对话框
+                            vue.$data.dialogTableVisible = true;
+                        });
+                    }
+                } else {
+                    ELEMENT.MessageBox.alert(generateAnswersResult.msg, '生成答案失败', {type: 'error'});
+                }
+            }
+
+            // 预览答案
+            function preAnswers() {
+                if (vue.$data.surveyAnswers?.length > 0) {
+                    vue.$data.dialogTableVisible = true;
+                    return;
+                }
+                generateAnswers();
+            }
+
+            // 保存规则及答案
+            function saveSurveyAndAnswers() {
+                // 调用JAVA保存
+                var result = surveyService.saveSurvey(JSON.stringify(vue.$data.survey), JSON.stringify(vue.$data.surveyAnswers));
+                var saveSurveyResult = JSON.parse(result);
+                if (saveSurveyResult?.code === 200) {
+                    ELEMENT.MessageBox('保存成功', {
+                        type: 'success'
+                    });
+                } else {
+                    ELEMENT.MessageBox.alert(saveSurveyResult?.msg, '保存失败', {type: 'error'});
+                }
+            }
+
+            return {
+                survey: {},
+                surveyAnswers: [],
+                tableCellClassName,
+                dialogTableVisible,
+                dialogFullscreen,
+                addRule,
+                delRule,
+                addOption,
+                delOption,
+                generateAnswers,
+                preAnswers,
+                saveSurveyAndAnswers
+            }
+        }
+    });
+    // 监听错误
+    window.onerror = function (message, source, lineno, colno, error) {
+        console.log('An error occurred:', message);
+        console.log('Source:', source);
+        console.log('Line:', lineno);
+        console.log('Column:', colno);
+        console.log('Error object:', error);
+
+        ELEMENT.MessageBox(JSON.stringify(message), {
+            type: 'success'
+        });
+    };
+
+    // 设置问卷数据
+    function setSurvey(data) {
+        vue.$data.survey = {};
+        data = data.replace(/\s+/g, " "); // 传过来的JSON字符串可能存在中文字符，得去掉
+        vue.$data.survey = eval('(' + data + ')');
+    }
+
+    function setSurveyAnswers(data) {
+        vue.$data.surveyAnswers = {};
+        data = data.replace(/\s+/g, " "); // 传过来的JSON字符串可能存在中文字符，得去掉
+        vue.$data.surveyAnswers = eval('(' + data + ')');
+    }
+</script>
+</html>

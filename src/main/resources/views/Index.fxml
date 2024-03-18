@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.JFXButton?>
+<?import com.jfoenix.controls.JFXComboBox?>
+<?import com.jfoenix.controls.JFXRadioButton?>
+<?import com.jfoenix.controls.JFXTextField?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.TextFlow?>
+<VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefHeight="400.0" prefWidth="700.0"
+      spacing="15.0" fx:controller="com.cxxwl96.autoanswer.views.IndexController" styleClass="backgroundPane"
+      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+    <padding>
+        <Insets bottom="25.0" left="15.0" right="15.0" top="25.0"/>
+    </padding>
+    <HBox spacing="10.0">
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
+            <Label text="域:"/>
+            <JFXComboBox fx:id="domainSelect" promptText="--请选择--"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
+            <Label text="链接:"/>
+            <JFXTextField fx:id="linkText" promptText="http:///..." HBox.hgrow="ALWAYS"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
+            <JFXButton fx:id="parseBtn" mnemonicParsing="false" text="解析问卷" onAction="#onParse"/>
+        </HBox>
+    </HBox>
+    <HBox spacing="10.0">
+        <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
+            <Label text="链接ID:"/>
+            <JFXTextField fx:id="linkIdText" promptText="解析问卷成功后自动生成" HBox.hgrow="ALWAYS" text="20240318212847_问卷星_ckDR71"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
+            <Label text="问卷数:"/>
+            <JFXTextField fx:id="countText" prefWidth="50.0" text="10"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
+            <JFXButton fx:id="ruleBtn" onAction="#onRule" mnemonicParsing="false" text="填写规则"/>
+        </HBox>
+    </HBox>
+    <HBox spacing="10.0">
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
+            <JFXRadioButton fx:id="rangeProxy" mnemonicParsing="false" selected="true" text="随机代理">
+                <toggleGroup>
+                    <ToggleGroup fx:id="proxy"/>
+                </toggleGroup>
+            </JFXRadioButton>
+            <JFXRadioButton fx:id="assignProxy" mnemonicParsing="false" text="指定代理" toggleGroup="$proxy"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0" fx:id="provinceHBox">
+            <Label text="省:"/>
+            <JFXComboBox fx:id="provinceSelect" onAction="#provinceChange"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0" fx:id="cityHBox" HBox.hgrow="ALWAYS">
+            <Label text="市:"/>
+            <JFXComboBox fx:id="citySelect"/>
+        </HBox>
+        <HBox alignment="CENTER_LEFT" spacing="5.0">
+            <JFXButton fx:id="submitBtn" onAction="#onSubmit" mnemonicParsing="false" text="一键答题"/>
+        </HBox>
+    </HBox>
+    <ScrollPane fx:id="scrollPane" VBox.vgrow="ALWAYS" style="-fx-border-color: #868686; -fx-border-width: 1px">
+        <TextFlow fx:id="textFlow">
+            <padding>
+                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+            </padding>
+        </TextFlow>
+    </ScrollPane>
+</VBox>
