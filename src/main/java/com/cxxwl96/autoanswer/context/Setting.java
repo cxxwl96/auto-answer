@@ -35,15 +35,9 @@ public class Setting {
     @Value("proxy.province")
     private String proxyProvince;
 
-    @Value("schedule.segment")
-    private int scheduleSegment;
+    @Value("schedule.survey.segment")
+    private String scheduleSurveySegment;
 
-    @Value("schedule.segment.sleep")
-    private long scheduleSegmentSleep;
-
-    @Value("schedule.nThread")
-    private int scheduleNThread;
-
-    @Value("schedule.nThread.sleep")
-    private long scheduleNThreadSleep;
+    @Value("schedule.survey.submit")
+    private String scheduleSurveySubmit;
 }

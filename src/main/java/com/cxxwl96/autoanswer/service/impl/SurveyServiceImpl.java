@@ -20,7 +20,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.cxxwl96.autoanswer.context.AutoAnswerContext;
 import com.cxxwl96.autoanswer.context.Script;
-import com.cxxwl96.autoanswer.context.Setting;
 import com.cxxwl96.autoanswer.ipproxy.CityCode;
 import com.cxxwl96.autoanswer.ipproxy.IpProxy;
 import com.cxxwl96.autoanswer.ipproxy.ResultBody;
@@ -38,6 +37,7 @@ import com.cxxwl96.autoanswer.utils.ExpressionUtil;
 import com.cxxwl96.autoanswer.utils.RegexUtil;
 import com.cxxwl96.autoanswer.utils.TextAreaLog;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -85,8 +85,11 @@ public class SurveyServiceImpl implements SurveyService {
     // 是否正在解析问卷
     private final BooleanProperty parsing = new SimpleBooleanProperty();
 
-    // 填写规则窗口
-    private Stage editRuleBrowser;
+    // 是否正在答题
+    private final BooleanProperty answering = new SimpleBooleanProperty();
+
+    // 答题线程池
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     /**
      * 解析问卷，并保存到survey
@@ -97,6 +100,9 @@ public class SurveyServiceImpl implements SurveyService {
      */
     @Override
     public String parseSurvey(String url, String domain) {
+        if (answering.get()) {
+            throw new RuntimeException("答题任务正在执行");
+        }
         parsing.set(true);
         String id = LocalDateTimeUtil.format(LocalDateTime.now(), "yyyyMMddHHmmss") + "_" + domain + "_"
             + RegexUtil.randomString(6);
@@ -168,6 +174,9 @@ public class SurveyServiceImpl implements SurveyService {
      */
     @Override
     public void editRule(String linkId, int count) {
+        if (answering.get()) {
+            throw new RuntimeException("答题任务正在执行");
+        }
         Survey survey = AutoAnswerContext.getSurvey(linkId);
         List<List<SubjectAnswer>> surveyAnswers = AutoAnswerContext.getSurveyAnswers(linkId);
         if (survey == null) {
@@ -176,7 +185,6 @@ public class SurveyServiceImpl implements SurveyService {
         survey.setCount(count);
         AutoAnswerContext.saveSurvey(survey); // 更新数量
         Stage browser = new Stage();
-        this.editRuleBrowser = browser;
         WebView view = new WebView();
         double screenWidth = Screen.getPrimary().getVisualBounds().getWidth();
         double screenHeight = Screen.getPrimary().getVisualBounds().getHeight();
@@ -221,6 +229,9 @@ public class SurveyServiceImpl implements SurveyService {
     @SneakyThrows
     @Override
     public void submit(String linkId, boolean assignProxy, String province, String city) {
+        if (answering.get()) {
+            throw new RuntimeException("答题任务正在执行");
+        }
         Survey survey = AutoAnswerContext.getSurvey(linkId);
         if (survey == null) {
             throw new RuntimeException("链接" + linkId + "不存在");
@@ -230,11 +241,54 @@ public class SurveyServiceImpl implements SurveyService {
             throw new RuntimeException("链接" + linkId + "未保存规则，请先编辑规则");
         }
         Result<List<String>> checkResult = checkSurveyAnswers(surveyAnswers);
+        // TODO
         // Assert.isTrue(checkResult.isSuccess(),
         //     "根据规则生成答案时存在以下题目答案未生成，请检查规则是否符合预期？\n" + StrUtil.join("\n",
         //         checkResult.getData()));
+        executor.submit(() -> {
+            answering.set(true);
+            try {
+                String scheduleSurveySegment = AutoAnswerContext.getSetting().getScheduleSurveySegment();
+                // 获取提交答案脚本
+                Script script = AutoAnswerContext.getScript(survey.getDomain());
+                // 执行答题
+                for (int i = 0; i < surveyAnswers.size(); i++) {
+                    // 设置代理
+                    setProxy(assignProxy, province, city);
+                    // 打开浏览器并提交答案
+                    // openBrowserAndSubmit(surveyAnswers.get(i), i + 1, survey, script);
+                    // 延时
+                    if (i < surveyAnswers.size() - 1) {
+                        long time = nextTimeFromRange(scheduleSurveySegment);
+                        String nextDateTime = LocalDateTime.now().plus(Duration.ofMillis(time)).toString();
+                        logger.info((i + 1) + ". 下一份执行时间：" + nextDateTime);
+                        sleep(time);
+                    }
+                }
+            } catch (Exception exception) {
+                log.error(exception.getMessage(), exception);
+                logger.error(exception.getMessage());
+            } finally {
+                clearProxy();
+                answering.set(false);
+            }
+        });
+    }
 
-        asyncSchedule(survey, surveyAnswers, assignProxy, province, city);
+    private long nextTimeFromRange(String range) {
+        if (range != null) {
+            String[] split = range.split("-");
+            if (split.length == 1 && NumberUtil.isLong(split[0])) {
+                return NumberUtil.parseLong(split[0]);
+            } else if (split.length == 2 && NumberUtil.isLong(split[0]) && NumberUtil.isLong(split[1])) {
+                long start = NumberUtil.parseLong(split[0]);
+                long end = NumberUtil.parseLong(split[1]);
+                if (end - start > 0) {
+                    return new Random().nextInt(Math.toIntExact(end - start + 1)) + start;
+                }
+            }
+        }
+        return 0;
     }
 
     /**
@@ -321,87 +375,52 @@ public class SurveyServiceImpl implements SurveyService {
         return Result.success();
     }
 
-    private void asyncSchedule(Survey survey, List<List<SubjectAnswer>> surveyAnswers, boolean assignProxy,
-        String province, String city) {
-        Setting setting = AutoAnswerContext.getSetting();
-        int segment = setting.getScheduleSegment(); // 阶段数
-        long segmentSleep = setting.getScheduleSegmentSleep();
-        int nThread = setting.getScheduleNThread(); // 每个阶段最大线程数
-        long nThreadSleep = setting.getScheduleNThreadSleep();
-        int totalSize = surveyAnswers.size(); // 任务总数
-
-        int marginNum = totalSize % segment; // 余量
-        int index = 0;
-        for (int i = 0; i < segment; i++, marginNum--) {
-            int segmentSize = totalSize / segment; // 每个阶段执行的任务数
-            if (marginNum > 0) {
-                segmentSize++;
-            }
-            if (segmentSize <= 0) {
-                continue;
-            }
-
-            // 执行任务
-            ExecutorService executor = Executors.newFixedThreadPool(nThread);
-            int j;
-            for (j = index; j < index + segmentSize; j++) {
-                List<SubjectAnswer> subjectAnswers = surveyAnswers.get(j);
-                int finalJ = j;
-                int finalEnd = index + segmentSize;
-                executor.submit(() -> {
-                    Platform.runLater(() -> {
-                        openBrowserAndSubmit(subjectAnswers, finalJ + 1, survey, assignProxy, province, city);
-                    });
-                    if (finalJ < finalEnd) {
-                        sleep(nThreadSleep);
-                    }
-                });
-            }
-            index = j;
-            executor.shutdown();
-
-            // 间隔时间
-            if (i < segment - 1) {
-                sleep(segmentSleep);
-            }
-        }
-    }
-
-    private synchronized void openBrowserAndSubmit(List<SubjectAnswer> subjectAnswers, int index, Survey survey,
-        boolean assignProxy, String province, String city) {
-
-        logger.info("执行任务：" + index);
-        // 获取提交答案脚本
-        Script script = AutoAnswerContext.getScript(survey.getDomain());
-        // 设置代理
-        setProxy(assignProxy, province, city);
-
+    private void openBrowserAndSubmit(List<SubjectAnswer> subjectAnswers, int index, Survey survey, Script script) {
         Stage browser = new Stage();
         WebView view = new WebView();
         WebEngine engine = view.getEngine();
         engine.getLoadWorker().stateProperty().addListener((observableValue, oldState, newState) -> {
             if (newState == Worker.State.SUCCEEDED) {
-                // 在这里执行JavaScript代码
-                JSObject window = (JSObject) engine.executeScript("window");
-                window.setMember("subjectAnswers", JSON.toJSONString(subjectAnswers)); // 注入答案对象到页面
-                try {
-                    logger.info(String.format("[提交答案 %d]", index));
-                    Object result = engine.executeScript(script.getExecutor());
-                    logger.info(String.format("[提交结果 %d][%s]", index, result.toString()));
-                    if ("OK".equals(result.toString())) {
-                        logger.success(String.format("[答题成功] 第%d份", index));
-                        // 关闭
-                        logger.warn("关闭浏览器");
-                        browser.close();
-                    } else {
-                        logger.error(String.format("[答题失败] 第%d份 %s", index, result));
-                    }
-                } catch (Exception exception) {
-                    browser.setTitle("答题失败 第" + index + "份");
-                    String msg = String.format("[答题失败 %d]%s\n%s", index, exception.getMessage(),
-                        ExceptionUtil.stacktraceToString(exception));
-                    logger.error(msg);
+                // 计算提交时间
+                String scheduleSurveySubmit = AutoAnswerContext.getSetting().getScheduleSurveySubmit();
+                long time = nextTimeFromRange(scheduleSurveySubmit);
+                LocalDateTime submitTime = LocalDateTime.now().plus(Duration.ofMillis(time));
+                String nextDateTime = submitTime.toString();
+                logger.info(index + ". 提交时间：" + nextDateTime);
+                browser.setTitle(browser.getTitle() + " 提交时间：" + nextDateTime + " 剩余：" + time + "s");
+
+                while (LocalDateTime.now().isBefore(submitTime)) {
+                    Platform.runLater(() -> {
+                        String title = browser.getTitle();
+                        title = title.substring(0, title.lastIndexOf("：")) + "：" + LocalDateTimeUtil.between(
+                            LocalDateTime.now(), submitTime).getSeconds() + "s";
+                        browser.setTitle(title);
+                    });
                 }
+
+                browser.close();
+                // TODO
+                // // 在这里执行JavaScript代码
+                // JSObject window = (JSObject) engine.executeScript("window");
+                // window.setMember("subjectAnswers", JSON.toJSONString(subjectAnswers)); // 注入答案对象到页面
+                // try {
+                //     logger.info(String.format("[提交答案 %d]", index));
+                //     Object result = engine.executeScript(script.getExecutor());
+                //     logger.info(String.format("[提交结果 %d][%s]", index, result.toString()));
+                //     if ("OK".equals(result.toString())) {
+                //         logger.success(String.format("[答题成功] 第%d份", index));
+                //         // 关闭
+                //         logger.warn("关闭浏览器");
+                //         browser.close();
+                //     } else {
+                //         logger.error(String.format("[答题失败] 第%d份 %s", index, result));
+                //     }
+                // } catch (Exception exception) {
+                //     browser.setTitle("答题失败 第" + index + "份");
+                //     String msg = String.format("[答题失败 %d]%s\n%s", index, exception.getMessage(),
+                //         ExceptionUtil.stacktraceToString(exception));
+                //     logger.error(msg);
+                // }
             }
         });
 
@@ -409,8 +428,8 @@ public class SurveyServiceImpl implements SurveyService {
 
         browser.setTitle("自动答题 第" + index + "份");
         browser.getIcons().add(ApplicationStore.get("logo", Image.class));
-        // browser.initOwner(ApplicationStore.get("window", Stage.class));
-        // browser.initModality(Modality.APPLICATION_MODAL);
+        browser.initOwner(ApplicationStore.get("window", Stage.class));
+        browser.initModality(Modality.APPLICATION_MODAL);
         browser.setScene(new Scene(view));
         browser.show();
     }
@@ -422,7 +441,7 @@ public class SurveyServiceImpl implements SurveyService {
         }
     }
 
-    private void setProxy(boolean assignProxy, String province, String city) {
+    private ResultBody setProxy(boolean assignProxy, String province, String city) {
         if (assignProxy) {
             Assert.isTrue(StrUtil.isNotBlank(province) && StrUtil.isNotBlank(city));
         } else {
@@ -438,7 +457,7 @@ public class SurveyServiceImpl implements SurveyService {
         if (result.getStatus() != 0) {
             logger.error(
                 "代理失败：" + Optional.ofNullable(result.getInfo()).filter(StrUtil::isNotBlank).orElse("请求失败"));
-            return;
+            return result;
         }
         ResultBody.Server server = Optional.ofNullable(result.getList())
             .filter(list -> !list.isEmpty())
@@ -449,6 +468,7 @@ public class SurveyServiceImpl implements SurveyService {
         System.setProperty("http.proxyPort", String.valueOf(server.getPort()));
         System.setProperty("https.proxyHost", server.getSever());
         System.setProperty("https.proxyPort", String.valueOf(server.getPort()));
+        return result;
     }
 
     private void clearProxy() {

@@ -33,7 +33,7 @@
     <HBox spacing="10.0">
         <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
             <Label text="链接ID:"/>
-            <JFXTextField fx:id="linkIdText" promptText="解析问卷成功后自动生成" HBox.hgrow="ALWAYS" text="20240318212847_问卷星_ckDR71"/>
+            <JFXTextField fx:id="linkIdText" promptText="解析问卷成功后自动生成" HBox.hgrow="ALWAYS" text="20240319205727_问卷星_5nB832"/>
         </HBox>
         <HBox alignment="CENTER_LEFT" spacing="5.0">
             <Label text="问卷数:"/>

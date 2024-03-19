@@ -95,13 +95,14 @@ public class TextAreaLog {
                 log.error(message);
                 break;
         }
-        if (TEXT_FLOW == null) {
-            return;
-        }
-        String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        String format = String.format("%s [%s] > %s\n", now, level.getLevel(), message);
+
 
         Platform.runLater(() -> {
+            if (TEXT_FLOW == null) {
+                return;
+            }
+            String now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            String format = String.format("%s [%s] > %s\n", now, level.getLevel(), message);
             int buffer = AutoAnswerContext.getSetting().getLoggerBuffer();
             if (TEXT_FLOW.getChildren().size() > buffer) {
                 TEXT_FLOW.getChildren().clear();
