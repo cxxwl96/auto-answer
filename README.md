@@ -1,14 +1,3 @@
-# auto-answer
-auto answer by custom rules.
-
-> open -a /Applications/Google\ Chrome.app/ --args --proxy-server=115.223.31.36:34640 http://www.baidu.com https://www.ip138.com
-
-```text
-单选多题：https://www.wjx.cn/vm/hQgglBx.aspx
-填空题：https://www.wjx.cn/vm/eM1ANf3.aspx
-打分题、单选多题、多页面：https://www.wjx.cn/vm/esdlv1k.aspx
-打分多题：https://www.wjx.cn/vm/wkf2T7I.aspx
-```
-
-TODO List
-+ 打分多题脚本
+version https://git-lfs.github.com/spec/v1
+oid sha256:1830f4868a3e1cfcc53c62e61030f7a082ef1730484bf20cc6657734728d2fb1
+size 439
