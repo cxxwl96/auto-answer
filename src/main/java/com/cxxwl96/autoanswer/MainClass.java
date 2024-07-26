@@ -30,6 +30,7 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -83,9 +84,14 @@ public class MainClass extends Application {
         }
     }
 
+    @SneakyThrows
     private void unzipBin() {
-        if (!new File("./bin").exists()) {
-            ZipUtil.unzip(new File("./resources/bin.zip"), new File("./bin"));
+        File targetFile = new File("./bin");
+        if (!targetFile.exists()) {
+            File originFile = new File("./resources/bin.zip");
+            log.info("unzip {} to {}", originFile.getCanonicalPath(), targetFile.getCanonicalPath());
+            ZipUtil.unzip(originFile, targetFile);
+            log.info("unzip {} to {} success", originFile.getCanonicalPath(), targetFile.getCanonicalPath());
         }
     }
 }
