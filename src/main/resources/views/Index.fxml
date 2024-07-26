@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.jfoenix.controls.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.text.TextFlow?>
+<VBox fx:controller="com.cxxwl96.autoanswer.views.IndexController" styleClass="backgroundPane"
+      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+    <JFXToolbar>
+        <padding>
+            <Insets left="15.0" right="15.0"/>
+        </padding>
+        <leftItems>
+            <Hyperlink onAction="#onSetting" text="设置" style="-fx-font-size: 14px"/>
+            <Hyperlink onAction="#onUpdating" text="检查更新" style="-fx-font-size: 14px"/>
+        </leftItems>
+    </JFXToolbar>
+    <VBox maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" prefWidth="800" spacing="15.0" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets bottom="10.0" left="15.0" right="15.0" top="25.0"/>
+        </padding>
+        <VBox styleClass="card-pane">
+            <HBox spacing="10.0">
+                <HBox alignment="CENTER_LEFT" spacing="5.0">
+                    <Label text="域:"/>
+                    <JFXComboBox fx:id="domainSelect" promptText="--请选择--"/>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
+                    <Label text="链接:"/>
+                    <JFXTextField fx:id="linkText" promptText="http:///..." HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="5.0">
+                    <JFXButton fx:id="parseBtn" mnemonicParsing="false" text="解析问卷" onAction="#onParse"/>
+                </HBox>
+            </HBox>
+        </VBox>
+        <VBox styleClass="card-pane">
+            <HBox spacing="10.0">
+                <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
+                    <Label text="链接ID:"/>
+                    <JFXTextField fx:id="linkIdText" promptText="解析问卷成功后自动生成" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="5.0">
+                    <JFXButton fx:id="ruleBtn" onAction="#onRule" mnemonicParsing="false" text="填写规则"/>
+                </HBox>
+            </HBox>
+        </VBox>
+        <VBox styleClass="card-pane" spacing="10">
+            <HBox spacing="10.0">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label text="网络代理:"/>
+                    <JFXRadioButton mnemonicParsing="false" selected="true" text="不使用代理" userData="NO_PROXY">
+                        <toggleGroup>
+                            <ToggleGroup fx:id="proxyTG"/>
+                        </toggleGroup>
+                    </JFXRadioButton>
+                    <JFXRadioButton mnemonicParsing="false" text="随机代理" userData="RANGE_PROXY"
+                                    toggleGroup="$proxyTG"/>
+                    <JFXRadioButton fx:id="assignProxy" mnemonicParsing="false" text="指定代理" userData="ASSIGN_PROXY"
+                                    toggleGroup="$proxyTG"/>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="5.0" fx:id="provinceHBox">
+                    <Label text="省:"/>
+                    <JFXComboBox fx:id="provinceSelect" onAction="#provinceChange"/>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="5.0" fx:id="cityHBox" HBox.hgrow="ALWAYS">
+                    <Label text="市:"/>
+                    <JFXComboBox fx:id="citySelect"/>
+                </HBox>
+            </HBox>
+            <HBox spacing="20.0">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label text="用户代理:"/>
+                    <JFXRadioButton mnemonicParsing="false" selected="true" text="默认UA" userData="DEFAULT">
+                        <toggleGroup>
+                            <ToggleGroup fx:id="userAgentTG"/>
+                        </toggleGroup>
+                    </JFXRadioButton>
+                    <JFXRadioButton mnemonicParsing="false" text="电脑UA" userData="PC"
+                                    toggleGroup="$userAgentTG"/>
+                    <JFXRadioButton mnemonicParsing="false" text="手机UA" userData="PHONE"
+                                    toggleGroup="$userAgentTG"/>
+                </HBox>
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <padding>
+                        <Insets left="20"/>
+                    </padding>
+                    <JFXCheckBox fx:id="autoSubmit" selected="true" text="自动提交问卷" style="-fx-cursor: hand"/>
+                    <JFXCheckBox fx:id="autoClose" selected="true" text="自动关闭浏览器" style="-fx-cursor: hand"/>
+                </HBox>
+            </HBox>
+            <HBox spacing="20">
+                <padding>
+                    <Insets top="20"/>
+                </padding>
+                <HBox alignment="CENTER_RIGHT" spacing="5.0" HBox.hgrow="ALWAYS">
+                    <JFXButton onAction="#onSubmit" mnemonicParsing="false" text="一键答题"/>
+                    <JFXButton onAction="#onStop" mnemonicParsing="false" text="停止答题"
+                               styleClass="jfx-button-danger"/>
+                    <JFXButton onAction="#onCloseAllBrowser" mnemonicParsing="false" text="关闭所有浏览器"
+                               styleClass="jfx-button-warning"/>
+                </HBox>
+            </HBox>
+        </VBox>
+        <VBox styleClass="card-pane" VBox.vgrow="ALWAYS" style="-fx-padding: 10"  prefHeight="300.0">
+            <ScrollPane fx:id="scrollPane" VBox.vgrow="ALWAYS" style="-fx-border-color: #868686; -fx-border-width: 1px">
+                <TextFlow fx:id="textFlow">
+                    <padding>
+                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+                    </padding>
+                </TextFlow>
+            </ScrollPane>
+        </VBox>
+        <Text text="Power by: cxxwl96@sina.com" fill="#868686" style="-fx-font-size: 10px;"/>
+    </VBox>
+</VBox>

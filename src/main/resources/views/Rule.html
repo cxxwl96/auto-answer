@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="../assets/css/index.css">
+    <link rel="stylesheet" href="../assets/css/rule.css">
+    <style>
+        [v-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div v-if="survey?.subjects?.length>0" v-cloak>
+        <div class="headsplitdiv"></div>
+        <div class="page">
+            <div class="vote-header">
+                <div id="toptitle">
+                    <h1 class="htitle" id="htitle">{{ survey.topic }}</h1>
+                </div>
+            </div>
+            <div id="divContent">
+                <div id="divDesc" class="formfield">
+                    <span class="description">{{ survey.description }}</span>
+                </div>
+                <div v-for="(subject, index) in survey.subjects" :key="index">
+                    <!-- 题目 -->
+                    <el-row type="flex" align="middle">
+                        <el-col :span="18">
+                            <p>
+                                <span>
+                                    <el-checkbox label="必答" v-model="subject.require">
+                                    </el-checkbox>
+                                </span>
+                                <span class="topichtml topichtml-type">【{{ subject.type }}】</span>
+                                <span class="topichtml">{{ subject.no }}.<span v-html="subject.question"></span></span>
+                            </p>
+                        </el-col>
+                        <el-col :span="6" style="text-align: right;">
+                            <div v-if="subject.type==='多选题'" style="display: inline-block; margin-right: 10px">
+                                <span style=" font-size: 12px; color: #909399">选项个数：</span>
+                                <el-input size="mini" v-model="subject.atLeastBegin"
+                                          style="width: 50px; text-align: center"></el-input>
+                                -
+                                <el-input size="mini" v-model="subject.atLeastEnd"
+                                          style="width: 50px; text-align: center"></el-input>
+                            </div>
+                            <el-tooltip class="item" effect="dark" content="平铺规则" placement="bottom">
+                                <a class="btn" @click="repeatRule(subject, index)">
+                                    <i class="el-icon-bottom"></i>
+                                </a>
+                            </el-tooltip>
+                            <el-tooltip class="item" effect="dark" content="平铺下一题规则" placement="bottom">
+                                <a class="btn" @click="repeatNextRule(subject, index)">
+                                    <i class="el-icon-download"></i>
+                                </a>
+                            </el-tooltip>
+                        </el-col>
+                    </el-row>
+                    <!-- 单选题、多选题、填空题 -->
+                    <div v-if="subject.type==='单选题' || subject.type==='多选题' || subject.type==='填空题'">
+                        <el-row v-if="subject.type==='填空题'" class="option-content">
+                            <el-alert
+                                    title="提示：该题为填空题，你可以填写多个答案并制定选择率及规则，最终答案会以单选形式生成"
+                                    type="warning"></el-alert>
+                            <el-button type="primary" size="small" style="margin-top: 10px"
+                                       @click="addOption(subject.options)">添加选项
+                            </el-button>
+                        </el-row>
+                        <div v-for="(option, i) in subject.options" :key="i">
+                            <el-row class="option-content">
+                                <el-col :span="8" v-if="subject.type==='单选题' || subject.type==='多选题'">
+                                    <el-radio v-if="subject.type==='单选题'" :label="option.tab" disabled>
+                                        {{ option.tab }}.{{ option.content }}
+                                    </el-radio>
+                                    <el-checkbox v-else-if="subject.type==='多选题'"
+                                                 :label="option.tab+'.'+option.content"
+                                                 disabled>
+                                    </el-checkbox>
+                                </el-col>
+                                <el-col :span="6" v-if="subject.type==='填空题'">
+                                    {{ option.tab }}.
+                                    <el-input size="mini" placeholder="填空答案" clearable class="el-input-tiankong"
+                                              v-model="option.content"></el-input>
+                                </el-col>
+                                <el-col :span="2" v-if="subject.type==='填空题'">
+                                    <a class="btn" @click="delOption(subject.options, i)">删除选项</a>
+                                </el-col>
+                                <el-col :span="2">
+                                    <el-checkbox v-model="option.disabled">不选择此项</el-checkbox>
+                                </el-col>
+                                <el-col :span="14">
+                                    <!-- 规则条件 -->
+                                    <el-table :data="option.rules" :cell-class-name="tableCellClassName" border stripe>
+                                        <el-table-column>
+                                            <template slot-scope="scope">
+                                                <el-input size="mini" placeholder="填写能选择该选项的条件" clearable
+                                                          v-model="scope.row.condition"></el-input>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column width="450" align="center">
+                                            <template slot="header" slot-scope="scope">
+                                                <el-slider v-model="option.defaultSelectance" show-input
+                                                           :show-input-controls="false"
+                                                           input-size="mini"
+                                                           :format-tooltip="function(val) {
+                                                             return val+'%';
+                                                           }"
+                                                           class="selectance selectance-default"></el-slider>
+
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <el-slider v-model="scope.row.selectance" show-input
+                                                           :show-input-controls="false"
+                                                           input-size="mini"
+                                                           :format-tooltip="function(val) {
+                                                             return val+'%';
+                                                           }"
+                                                           class="selectance"></el-slider>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column width="100" align="left">
+                                            <template slot="header" slot-scope="scope">
+                                                <el-tooltip class="item" effect="dark" content="添加规则" placement="bottom">
+                                                    <a class="btn" @click="addRule(option.rules)">
+                                                        <i class="el-icon-circle-plus-outline"></i>
+                                                    </a>
+                                                </el-tooltip>
+                                                <el-tooltip class="item" effect="dark" content="平铺选项规则" placement="bottom">
+                                                    <a class="btn" @click="repeatSubjectOption(subject.options, option, i)">
+                                                        <i class="el-icon-arrow-down"></i>
+                                                    </a>
+                                                </el-tooltip>
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <el-tooltip class="item" effect="dark" content="删除规则" placement="bottom">
+                                                    <a class="btn danger" @click="delRule(option.rules, scope.row.index)">
+                                                        <i class="el-icon-delete"></i>
+                                                    </a>
+                                                </el-tooltip>
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+                                </el-col>
+                            </el-row>
+                            <el-divider v-if="i<subject?.options?.length-1"></el-divider>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footsubmit">
+            <span style="font-size: 14px">问卷数：</span>
+            <el-input-number v-model="survey.count" size="small" controls-position="right" :min="0"></el-input-number>
+            <el-button size="small" style="width: 200px" @click="preAnswers">
+                {{ surveyAnswers?.length > 0 ? '查看答案' : '生成答案' }}
+            </el-button>
+            <el-button size="small" type="text" @click="generateAnswers" v-if="surveyAnswers?.length > 0">重新生成答案
+            </el-button>
+            <el-button size="small" type="primary" size="small" style="width: 200px" @click="saveSurveyAndAnswers">
+                保存答案
+            </el-button>
+        </div>
+        <div class="headsplitdiv"></div>
+    </div>
+    <el-empty v-else description="拼命加载中"></el-empty>
+    <el-dialog title="答案查看" :visible.sync="dialogVisible" :fullscreen="dialogFullscreen" width="60%"
+               top="50px"
+               :lock-scroll="false" :close-on-click-modal="false" :close-on-press-escape="false"
+    >
+        <template slot="title">
+            <span class="el-dialog__title">答案查看</span>
+            <button aria-label="Close" class="el-dialog__headerbtn" style="right: 60px"
+                    @click="dialogFullscreen = !dialogFullscreen">
+                <i class="el-dialog__close el-icon el-icon-full-screen"></i>
+            </button>
+        </template>
+        <div v-show="dialogVisible">
+            <el-row align="bottom">
+                <ul style="display: inline-block">
+                    <li><span style="color: #000000">黑色字体</span>表示根据规则生成的答案</li>
+                    <li><span style="color: #FF8700">黄色字体</span>表示根据规则无法生成答案，该答案由系统自动生成</li>
+                    <li><span style="color: rgb(255,0,0)">红色字体</span>表示根据规则无法生成答案</li>
+                </ul>
+                <el-tooltip class="item" effect="dark" content="导出Excel" placement="bottom">
+                    <a class="btn" @click="exportExcel" style="float: right">
+                        <svg t="1713878175450" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5138" width="25" height="25"><path d="M145.6 0C100.8 0 64 36.8 64 81.6v860.8C64 987.2 100.8 1024 145.6 1024h732.8c44.8 0 81.6-36.8 81.6-81.6V324.8L657.6 0h-512z" fill="#45B058" p-id="5139"></path><path d="M374.4 862.4c-3.2 0-6.4-1.6-8-3.2l-59.2-80-60.8 80c-1.6 1.6-4.8 3.2-8 3.2-6.4 0-11.2-4.8-11.2-11.2 0-1.6 0-4.8 1.6-6.4l62.4-81.6-57.6-78.4c-1.6-1.6-3.2-3.2-3.2-6.4 0-4.8 4.8-11.2 11.2-11.2 4.8 0 8 1.6 9.6 4.8l56 73.6 54.4-73.6c1.6-3.2 4.8-4.8 8-4.8 6.4 0 12.8 4.8 12.8 11.2 0 3.2-1.6 4.8-1.6 6.4l-59.2 76.8 62.4 83.2c1.6 1.6 3.2 4.8 3.2 6.4 0 6.4-6.4 11.2-12.8 11.2z m160-1.6H448c-9.6 0-17.6-8-17.6-17.6V678.4c0-6.4 4.8-11.2 12.8-11.2 6.4 0 11.2 4.8 11.2 11.2v161.6h80c6.4 0 11.2 4.8 11.2 9.6 0 6.4-4.8 11.2-11.2 11.2z m112 3.2c-28.8 0-51.2-9.6-67.2-24-3.2-1.6-3.2-4.8-3.2-8 0-6.4 3.2-12.8 11.2-12.8 1.6 0 4.8 1.6 6.4 3.2 12.8 11.2 32 20.8 54.4 20.8 33.6 0 44.8-19.2 44.8-33.6 0-49.6-113.6-22.4-113.6-89.6 0-32 27.2-54.4 65.6-54.4 24 0 46.4 8 60.8 20.8 3.2 1.6 4.8 4.8 4.8 8 0 6.4-4.8 12.8-11.2 12.8-1.6 0-4.8-1.6-6.4-3.2-14.4-11.2-32-16-49.6-16-24 0-40 11.2-40 30.4 0 43.2 113.6 17.6 113.6 89.6 0 27.2-19.2 56-70.4 56z" fill="#FFFFFF" p-id="5140"></path><path d="M960 326.4v16H755.2s-102.4-20.8-99.2-108.8c0 0 3.2 92.8 96 92.8h208z" fill="#349C42" p-id="5141"></path><path d="M656 0v233.6c0 25.6 19.2 92.8 99.2 92.8H960L656 0z" fill="#FFFFFF" p-id="5142"></path></svg>
+                    </a>
+                </el-tooltip>
+            </el-row>
+            <el-table id="answerTable" :data="surveyAnswers" :cell-class-name="tableCellClassName" height="60vh">
+                <el-table-column align="center" fixed>
+                    <template slot-scope="scope">
+                        <div>{{ '第' + (scope.row.index + 1) + '份' }}</div>
+                    </template>
+                </el-table-column>
+                <el-table-column v-for="(surveyAnswer, i) in surveyAnswers[0]" :key="i" :label="'第'+(i+1)+'题'"
+                                 align="center">
+                    <template slot-scope="scope">
+                        <div v-if="scope.row[i]?.answers?.length>0">
+                            <span v-for="(answer, j) in scope.row[i]?.answers" :key="j"
+                                  :style="{color: scope.row[i]?.systemAnswers.includes(answer) ? '#FF8700' : '#000000'}">{{answer}}&nbsp;</span>
+                        </div>
+                        <div v-else style="color: rgb(255,0,0)">无</div>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+    </el-dialog>
+</div>
+
+
+</body>
+<script src="../assets/js/vue.js"></script>
+<script src="../assets/js/FileSaver.min.js"></script>
+<script src="../assets/js/xlsx.full.min.js"></script>
+<script src="../assets/js/index.js"></script>
+<script>
+    var vue = new Vue({
+        el: '#app',
+        data: function () {
+            // 给单元格绑定横向和竖向的index，这样就能确定是哪一个单元格
+            function tableCellClassName({row, column, rowIndex, columnIndex}) {
+                row.index = rowIndex
+                column.index = columnIndex
+            }
+
+            // 添加规则
+            function addRule(rules) {
+                rules.push({"condition": "", "selectance": 0});
+            }
+
+            // 删除规则
+            function delRule(rules, index) {
+                console.log(index)
+                rules.splice(index, 1);
+            }
+
+            // 添加选项（填空题）
+            function addOption(options) {
+                options.push({
+                    "content": "",
+                    "defaultSelectance": 0,
+                    "disabled": false,
+                    "rules": [],
+                    "tab": String.fromCharCode(65 + options.length) + "",
+                })
+            }
+
+            // 删除选项（填空题）
+            function delOption(options, index) {
+                options.splice(index, 1);
+                for (let i = 0; i < options.length; i++) {
+                    options[i].tab = String.fromCharCode(65 + i) + "";
+                }
+            }
+
+            function repeatRule(subject, index) {
+                setTimeout(() => {
+                    var subjects = vue.$data.survey.subjects;
+                    for (let i = index+1; i < subjects.length; i++) {
+                        repeatSubject(subject, i);
+                    }
+                    ELEMENT.Message({message: '平铺成功', type: 'success'});
+                }, 10);
+            }
+
+            function repeatNextRule(subject, index) {
+                setTimeout(() => {
+                    repeatSubject(subject, index+1);
+                    ELEMENT.Message({message: '平铺成功', type: 'success'});
+                }, 10);
+            }
+
+            function repeatSubject(subject, index) {
+                var subjects = vue.$data.survey.subjects;
+                let i = index;
+                subjects[i].atLeastBegin = subject.atLeastBegin;
+                subjects[i].atLeastEnd = subject.atLeastEnd;
+
+                var nextSubjectOptions = subjects[i]?.options;
+                for (let j = 0; j < subject?.options.length; j++) {
+                    var option = subject.options[j];
+
+                    if (j < nextSubjectOptions.length) {
+                        nextSubjectOptions[j].defaultSelectance = option.defaultSelectance;
+                        nextSubjectOptions[j].rules = [...option.rules];
+                    }
+                }
+            }
+
+            function repeatSubjectOption(options, option, i) {
+                setTimeout(() => {
+                    for (let j = i + 1; j < options.length; j++) {
+                        options[j].defaultSelectance = option.defaultSelectance;
+                        options[j].rules = [...option.rules];
+                    }
+                    ELEMENT.Message({message: '平铺成功', type: 'success'});
+                }, 10);
+            }
+
+            // 生成答案
+            function generateAnswers() {
+                if (!vue.$data.survey.count) {
+                    ELEMENT.MessageBox.alert('请填写问卷数', '提示', {type: 'error'});
+                    return;
+                }
+                if (vue.$data.survey.count < 1) {
+                    ELEMENT.MessageBox.alert('问卷数必须大于0', '提示', {type: 'error'});
+                    return;
+                }
+                // 调用JAVA生成答案
+                var result = surveyService.generateAnswers(JSON.stringify(vue.$data.survey));
+                var generateAnswersResult = JSON.parse(result);
+                if (generateAnswersResult?.code === 200) {
+                    // 检查答案是否填写完成
+                    var confirm = {
+                        msg: '答案生成成功，是否查看答案？',
+                        type: 'success',
+                        showConfirmButton: true,
+                    };
+                    result = surveyService.checkAnswers(JSON.stringify(vue.$data.survey), JSON.stringify(generateAnswersResult?.data));
+                    var checkAnswersResult = JSON.parse(result);
+                    if (checkAnswersResult?.code !== 200) {
+                        if (checkAnswersResult?.data && checkAnswersResult?.data?.length > 0) {
+                            confirm.msg = '根据规则生成答案时存在以下题目答案未生成，请检查规则是否符合预期？<br/><span style="color: red">' + checkAnswersResult.data.join(',<br/>') + '</span>';
+                            confirm.type = 'warning';
+                        } else {
+                            confirm.msg = '生成答案失败。' + checkAnswersResult.msg;
+                            confirm.type = 'error';
+                            confirm.showConfirmButton = false;
+                        }
+                    }
+
+                    if (confirm.msg.length > 120) {
+                        confirm.msg = confirm.msg.substring(0, 120) + '...';
+                    }
+
+                    vue.$data.surveyAnswers = generateAnswersResult.data;
+
+                    if (!vue.$data.dialogVisible) {
+                        ELEMENT.MessageBox.confirm(confirm.msg, '提示', {
+                            confirmButtonText: '查看答案',
+                            cancelButtonText: '关闭',
+                            type: confirm.type,
+                            dangerouslyUseHTMLString: true,
+                            showConfirmButton: confirm.showConfirmButton,
+                        }).then(() => {
+                            // 显示答案查看对话框
+                            vue.$data.dialogVisible = true;
+                        });
+                    }
+                } else {
+                    ELEMENT.MessageBox.alert(generateAnswersResult.msg, '生成答案失败', {type: 'error'});
+                }
+            }
+
+            // 查看答案
+            function preAnswers() {
+                if (vue.$data.surveyAnswers?.length > 0) {
+                    vue.$data.dialogVisible = true;
+                    return;
+                }
+                generateAnswers();
+            }
+
+            // 保存规则及答案
+            function saveSurveyAndAnswers() {
+                // 调用JAVA保存
+                var result = surveyService.saveSurvey(JSON.stringify(vue.$data.survey), JSON.stringify(vue.$data.surveyAnswers));
+                var saveSurveyResult = JSON.parse(result);
+                if (saveSurveyResult?.code === 200) {
+                    ELEMENT.MessageBox('保存成功', {
+                        type: 'success'
+                    });
+                } else {
+                    ELEMENT.MessageBox.alert(saveSurveyResult?.msg, '保存失败', {type: 'error'});
+                }
+            }
+
+            function exportExcel() {
+                // var xlsxParam = { raw: true }
+                // let fix = document.querySelector(".el-table__fixed");
+                // let wb;
+                // if (fix) {
+                //     wb = XLSX.utils.table_to_book(
+                //         document.querySelector("#answerTable").removeChild(fix)
+                //     );
+                //     document.querySelector("#answerTable").appendChild(fix);
+                // } else {
+                //     wb = XLSX.utils.table_to_book(document.querySelector("#table_data"),xlsxParam);
+                // }
+                // let wbout = XLSX.write(wb, {bookType: "xlsx", bookSST: true, type: "array",});
+                //
+                // try {
+                //     saveAs(new Blob([wbout], { type: "application/octet-stream" }), "xxx.xlsx");
+                // } catch (e) {
+                //     if (typeof console !== "undefined") console.log(e, wbout);
+                // }
+                //
+                // return wbout;
+                var result = surveyService.exportExcel(JSON.stringify(vue.$data.survey), JSON.stringify(vue.$data.surveyAnswers));
+                var exportResult = JSON.parse(result);
+                if (exportResult?.code === 200) {
+                    ELEMENT.Message({message: '导出成功', type: 'success'});
+                } else {
+                    ELEMENT.MessageBox.alert(exportResult.msg, '导出失败', {type: 'error'});
+                }
+            }
+
+            return {
+                survey: {},
+                surveyAnswers: [],
+                tableCellClassName,
+                dialogVisible: false,
+                dialogFullscreen: false,
+                addRule,
+                delRule,
+                addOption,
+                delOption,
+                repeatRule,
+                repeatNextRule,
+                repeatSubjectOption,
+                generateAnswers,
+                preAnswers,
+                saveSurveyAndAnswers,
+                exportExcel,
+            }
+        }
+    });
+    // 监听错误
+    window.onerror = function (message, source, lineno, colno, error) {
+        console.log('An error occurred:', message);
+        console.log('Source:', source);
+        console.log('Line:', lineno);
+        console.log('Column:', colno);
+        console.log('Error object:', error);
+
+        ELEMENT.MessageBox(JSON.stringify(message), {
+            type: 'error'
+        });
+    };
+
+    // 设置问卷数据
+    function setSurvey(data) {
+        vue.$data.survey = {};
+        data = data.replace(/\s+/g, " "); // 传过来的JSON字符串可能存在中文字符，得去掉
+        vue.$data.survey = eval('(' + data + ')');
+    }
+
+    function setSurveyAnswers(data) {
+        vue.$data.surveyAnswers = {};
+        data = data.replace(/\s+/g, " "); // 传过来的JSON字符串可能存在中文字符，得去掉
+        vue.$data.surveyAnswers = eval('(' + data + ')');
+    }
+
+    setTimeout(() => {
+        if (!(vue.$data.survey?.subjects?.length > 0)) {
+            ELEMENT.MessageBox({
+                message: '加载超时',
+                type: 'error'
+            });
+        }
+    }, 10000);
+</script>
+</html>

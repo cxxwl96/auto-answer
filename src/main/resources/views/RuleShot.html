@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="../assets/css/index.css">
+    <link rel="stylesheet" href="../assets/css/rule.css">
+    <style>
+        [v-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div v-if="survey?.subjects?.length>0" v-cloak>
+        <div class="headsplitdiv"></div>
+        <div class="page">
+            <div class="vote-header">
+                <div id="toptitle">
+                    <h1 class="htitle" id="htitle">{{ survey.topic }}</h1>
+                </div>
+            </div>
+            <div id="divContent">
+                <div id="divDesc" class="formfield">
+                    <span class="description">{{ survey.description }}</span>
+                </div>
+                <div v-for="(subject, index) in survey.subjects" :key="index">
+                    <!-- 题目 -->
+                    <el-row type="flex" align="middle">
+                        <el-col :span="18">
+                            <p>
+                                <span>
+                                    <el-checkbox label="必答" v-model="subject.require">
+                                    </el-checkbox>
+                                </span>
+                                <span class="topichtml topichtml-type">【{{ subject.type }}】</span>
+                                <span class="topichtml">{{ subject.no }}.<span v-html="subject.question"></span></span>
+                            </p>
+                        </el-col>
+                        <el-col :span="6" style="text-align: right;">
+                            <div v-if="subject.type==='多选题'" style="display: inline-block; margin-right: 10px">
+                                <span style=" font-size: 12px; color: #909399">选项个数：</span>
+                                <el-input size="mini" v-model="subject.atLeastBegin"
+                                          style="width: 50px; text-align: center"></el-input>
+                                -
+                                <el-input size="mini" v-model="subject.atLeastEnd"
+                                          style="width: 50px; text-align: center"></el-input>
+                            </div>
+                            <el-tooltip class="item" effect="dark" content="平铺规则" placement="bottom">
+                                <a class="btn" @click="repeatRule(subject, index)">
+                                    <i class="el-icon-bottom"></i>
+                                </a>
+                            </el-tooltip>
+                            <el-tooltip class="item" effect="dark" content="平铺下一题规则" placement="bottom">
+                                <a class="btn" @click="repeatNextRule(subject, index)">
+                                    <i class="el-icon-download"></i>
+                                </a>
+                            </el-tooltip>
+                        </el-col>
+                    </el-row>
+                    <!-- 单选题、多选题、填空题 -->
+                    <div v-if="subject.type==='单选题' || subject.type==='多选题' || subject.type==='填空题'">
+                        <el-row v-if="subject.type==='填空题'" class="option-content">
+                            <el-alert
+                                    title="提示：该题为填空题，你可以填写多个答案并制定选择率及规则，最终答案会以单选形式生成"
+                                    type="warning"></el-alert>
+                            <el-button type="primary" size="small" style="margin-top: 10px"
+                                       @click="addOption(subject.options)">添加选项
+                            </el-button>
+                        </el-row>
+                        <div v-for="(option, i) in subject.options" :key="i">
+                            <el-row class="option-content">
+                                <el-col :span="8" v-if="subject.type==='单选题' || subject.type==='多选题'">
+                                    <el-radio v-if="subject.type==='单选题'" :label="option.tab" disabled>
+                                        {{ option.tab }}.{{ option.content }}
+                                    </el-radio>
+                                    <el-checkbox v-else-if="subject.type==='多选题'"
+                                                 :label="option.tab+'.'+option.content"
+                                                 disabled>
+                                    </el-checkbox>
+                                </el-col>
+                                <el-col :span="6" v-if="subject.type==='填空题'">
+                                    {{ option.tab }}.
+                                    <el-input size="mini" placeholder="填空答案" clearable class="el-input-tiankong"
+                                              v-model="option.content"></el-input>
+                                </el-col>
+                                <el-col :span="2" v-if="subject.type==='填空题'">
+                                    <a class="btn" @click="delOption(subject.options, i)">删除选项</a>
+                                </el-col>
+                                <el-col :span="2">
+                                    <el-checkbox v-model="option.disabled">不选择此项</el-checkbox>
+                                </el-col>
+                                <el-col :span="14">
+                                    <!-- 规则条件 -->
+                                    <el-table :data="option.rules" :cell-class-name="tableCellClassName" border stripe>
+                                        <el-table-column>
+                                            <template slot-scope="scope">
+                                                <el-input size="mini" placeholder="填写能选择该选项的条件" clearable
+                                                          v-model="scope.row.condition"></el-input>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column width="450" align="center">
+                                            <template slot="header" slot-scope="scope">
+                                                <el-slider v-model="option.defaultSelectance" show-input
+                                                           :show-input-controls="false"
+                                                           input-size="mini"
+                                                           :format-tooltip="function(val) {
+                                                             return val+'%';
+                                                           }"
+                                                           class="selectance selectance-default"></el-slider>
+
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <el-slider v-model="scope.row.selectance" show-input
+                                                           :show-input-controls="false"
+                                                           input-size="mini"
+                                                           :format-tooltip="function(val) {
+                                                             return val+'%';
+                                                           }"
+                                                           class="selectance"></el-slider>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column width="100" align="left">
+                                            <template slot="header" slot-scope="scope">
+                                                <el-tooltip class="item" effect="dark" content="添加规则" placement="bottom">
+                                                    <a class="btn" @click="addRule(option.rules)">
+                                                        <i class="el-icon-circle-plus-outline"></i>
+                                                    </a>
+                                                </el-tooltip>
+                                                <el-tooltip class="item" effect="dark" content="平铺选项规则" placement="bottom">
+                                                    <a class="btn" @click="repeatSubjectOption(subject.options, option, i)">
+                                                        <i class="el-icon-arrow-down"></i>
+                                                    </a>
+                                                </el-tooltip>
+                                            </template>
+                                            <template slot-scope="scope">
+                                                <el-tooltip class="item" effect="dark" content="删除规则" placement="bottom">
+                                                    <a class="btn danger" @click="delRule(option.rules, scope.row.index)">
+                                                        <i class="el-icon-delete"></i>
+                                                    </a>
+                                                </el-tooltip>
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+                                </el-col>
+                            </el-row>
+                            <el-divider v-if="i<subject?.options?.length-1"></el-divider>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footsubmit">
+            <span style="font-size: 14px">问卷数：</span>
+            <el-input-number v-model="survey.count" size="small" controls-position="right" :min="0"></el-input-number>
+            <el-button size="small" style="width: 200px" @click="preAnswers">
+                {{ surveyAnswers?.length > 0 ? '查看答案' : '生成答案' }}
+            </el-button>
+            <el-button size="small" type="text" @click="generateAnswers" v-if="surveyAnswers?.length > 0">重新生成答案
+            </el-button>
+            <el-button size="small" type="primary" size="small" style="width: 200px" @click="saveSurveyAndAnswers">
+                保存答案
+            </el-button>
+        </div>
+        <div class="headsplitdiv"></div>
+    </div>
+    <el-empty v-else description="拼命加载中"></el-empty>
+    <el-dialog title="答案查看" :visible.sync="dialogVisible" :fullscreen="dialogFullscreen" width="60%"
+               top="50px"
+               :lock-scroll="false" :close-on-click-modal="false" :close-on-press-escape="false"
+    >
+        <template slot="title">
+            <span class="el-dialog__title">答案查看</span>
+            <button aria-label="Close" class="el-dialog__headerbtn" style="right: 60px"
+                    @click="dialogFullscreen = !dialogFullscreen">
+                <i class="el-dialog__close el-icon el-icon-full-screen"></i>
+            </button>
+        </template>
+        <div v-show="dialogVisible">
+            <el-row align="bottom">
+                <ul style="display: inline-block">
+                    <li><span style="color: #000000">黑色字体</span>表示根据规则生成的答案</li>
+                    <li><span style="color: #FF8700">黄色字体</span>表示根据规则无法生成答案，该答案由系统自动生成</li>
+                    <li><span style="color: rgb(255,0,0)">红色字体</span>表示根据规则无法生成答案</li>
+                </ul>
+                <el-tooltip class="item" effect="dark" content="导出Excel" placement="bottom">
+                    <a class="btn" @click="exportExcel" style="float: right">
+                        <svg t="1713878175450" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5138" width="25" height="25"><path d="M145.6 0C100.8 0 64 36.8 64 81.6v860.8C64 987.2 100.8 1024 145.6 1024h732.8c44.8 0 81.6-36.8 81.6-81.6V324.8L657.6 0h-512z" fill="#45B058" p-id="5139"></path><path d="M374.4 862.4c-3.2 0-6.4-1.6-8-3.2l-59.2-80-60.8 80c-1.6 1.6-4.8 3.2-8 3.2-6.4 0-11.2-4.8-11.2-11.2 0-1.6 0-4.8 1.6-6.4l62.4-81.6-57.6-78.4c-1.6-1.6-3.2-3.2-3.2-6.4 0-4.8 4.8-11.2 11.2-11.2 4.8 0 8 1.6 9.6 4.8l56 73.6 54.4-73.6c1.6-3.2 4.8-4.8 8-4.8 6.4 0 12.8 4.8 12.8 11.2 0 3.2-1.6 4.8-1.6 6.4l-59.2 76.8 62.4 83.2c1.6 1.6 3.2 4.8 3.2 6.4 0 6.4-6.4 11.2-12.8 11.2z m160-1.6H448c-9.6 0-17.6-8-17.6-17.6V678.4c0-6.4 4.8-11.2 12.8-11.2 6.4 0 11.2 4.8 11.2 11.2v161.6h80c6.4 0 11.2 4.8 11.2 9.6 0 6.4-4.8 11.2-11.2 11.2z m112 3.2c-28.8 0-51.2-9.6-67.2-24-3.2-1.6-3.2-4.8-3.2-8 0-6.4 3.2-12.8 11.2-12.8 1.6 0 4.8 1.6 6.4 3.2 12.8 11.2 32 20.8 54.4 20.8 33.6 0 44.8-19.2 44.8-33.6 0-49.6-113.6-22.4-113.6-89.6 0-32 27.2-54.4 65.6-54.4 24 0 46.4 8 60.8 20.8 3.2 1.6 4.8 4.8 4.8 8 0 6.4-4.8 12.8-11.2 12.8-1.6 0-4.8-1.6-6.4-3.2-14.4-11.2-32-16-49.6-16-24 0-40 11.2-40 30.4 0 43.2 113.6 17.6 113.6 89.6 0 27.2-19.2 56-70.4 56z" fill="#FFFFFF" p-id="5140"></path><path d="M960 326.4v16H755.2s-102.4-20.8-99.2-108.8c0 0 3.2 92.8 96 92.8h208z" fill="#349C42" p-id="5141"></path><path d="M656 0v233.6c0 25.6 19.2 92.8 99.2 92.8H960L656 0z" fill="#FFFFFF" p-id="5142"></path></svg>
+                    </a>
+                </el-tooltip>
+            </el-row>
+            <el-table id="answerTable" :data="surveyAnswers" :cell-class-name="tableCellClassName" height="60vh">
+                <el-table-column align="center" fixed>
+                    <template slot-scope="scope">
+                        <div>{{ '第' + (scope.row.index + 1) + '份' }}</div>
+                    </template>
+                </el-table-column>
+                <el-table-column v-for="(surveyAnswer, i) in surveyAnswers[0]" :key="i" :label="'第'+(i+1)+'题'"
+                                 align="center">
+                    <template slot-scope="scope">
+                        <div v-if="scope.row[i]?.answers?.length>0">
+                            <span v-for="(answer, j) in scope.row[i]?.answers" :key="j"
+                                  :style="{color: scope.row[i]?.systemAnswers.includes(answer) ? '#FF8700' : '#000000'}">{{answer}}&nbsp;</span>
+                        </div>
+                        <div v-else style="color: rgb(255,0,0)">无</div>
+                    </template>
+                </el-table-column>
+            </el-table>
+        </div>
+    </el-dialog>
+</div>
+
+
+</body>
+<script src="../assets/js/vue.js"></script>
+<script src="../assets/js/FileSaver.min.js"></script>
+<script src="../assets/js/xlsx.full.min.js"></script>
+<script src="../assets/js/index.js"></script>
+<script>
+    var vue = new Vue({
+        el: '#app',
+        data: function () {
+            // 给单元格绑定横向和竖向的index，这样就能确定是哪一个单元格
+            function tableCellClassName({row, column, rowIndex, columnIndex}) {
+                row.index = rowIndex
+                column.index = columnIndex
+            }
+
+            // 添加规则
+            function addRule(rules) {
+                rules.push({"condition": "", "selectance": 0});
+            }
+
+            // 删除规则
+            function delRule(rules, index) {
+                console.log(index)
+                rules.splice(index, 1);
+            }
+
+            // 添加选项（填空题）
+            function addOption(options) {
+                options.push({
+                    "content": "",
+                    "defaultSelectance": 0,
+                    "disabled": false,
+                    "rules": [],
+                    "tab": String.fromCharCode(65 + options.length) + "",
+                })
+            }
+
+            // 删除选项（填空题）
+            function delOption(options, index) {
+                options.splice(index, 1);
+                for (let i = 0; i < options.length; i++) {
+                    options[i].tab = String.fromCharCode(65 + i) + "";
+                }
+            }
+
+            function repeatRule(subject, index) {
+                setTimeout(() => {
+                    var subjects = vue.$data.survey.subjects;
+                    for (let i = index+1; i < subjects.length; i++) {
+                        repeatSubject(subject, i);
+                    }
+                    ELEMENT.Message({message: '平铺成功', type: 'success'});
+                }, 10);
+            }
+
+            function repeatNextRule(subject, index) {
+                setTimeout(() => {
+                    repeatSubject(subject, index+1);
+                    ELEMENT.Message({message: '平铺成功', type: 'success'});
+                }, 10);
+            }
+
+            function repeatSubject(subject, index) {
+                var subjects = vue.$data.survey.subjects;
+                let i = index;
+                subjects[i].atLeastBegin = subject.atLeastBegin;
+                subjects[i].atLeastEnd = subject.atLeastEnd;
+
+                var nextSubjectOptions = subjects[i]?.options;
+                for (let j = 0; j < subject?.options.length; j++) {
+                    var option = subject.options[j];
+
+                    if (j < nextSubjectOptions.length) {
+                        nextSubjectOptions[j].defaultSelectance = option.defaultSelectance;
+                        nextSubjectOptions[j].rules = [...option.rules];
+                    }
+                }
+            }
+
+            function repeatSubjectOption(options, option, i) {
+                setTimeout(() => {
+                    for (let j = i + 1; j < options.length; j++) {
+                        options[j].defaultSelectance = option.defaultSelectance;
+                        options[j].rules = [...option.rules];
+                    }
+                    ELEMENT.Message({message: '平铺成功', type: 'success'});
+                }, 10);
+            }
+
+            // 生成答案
+            function generateAnswers() {
+                if (!vue.$data.survey.count) {
+                    ELEMENT.MessageBox.alert('请填写问卷数', '提示', {type: 'error'});
+                    return;
+                }
+                if (vue.$data.survey.count < 1) {
+                    ELEMENT.MessageBox.alert('问卷数必须大于0', '提示', {type: 'error'});
+                    return;
+                }
+                // 调用JAVA生成答案
+                var result = surveyService.generateAnswers(JSON.stringify(vue.$data.survey));
+                var generateAnswersResult = JSON.parse(result);
+                if (generateAnswersResult?.code === 200) {
+                    // 检查答案是否填写完成
+                    var confirm = {
+                        msg: '答案生成成功，是否查看答案？',
+                        type: 'success',
+                        showConfirmButton: true,
+                    };
+                    result = surveyService.checkAnswers(JSON.stringify(vue.$data.survey), JSON.stringify(generateAnswersResult?.data));
+                    var checkAnswersResult = JSON.parse(result);
+                    if (checkAnswersResult?.code !== 200) {
+                        if (checkAnswersResult?.data && checkAnswersResult?.data?.length > 0) {
+                            confirm.msg = '根据规则生成答案时存在以下题目答案未生成，请检查规则是否符合预期？<br/><span style="color: red">' + checkAnswersResult.data.join(',<br/>') + '</span>';
+                            confirm.type = 'warning';
+                        } else {
+                            confirm.msg = '生成答案失败。' + checkAnswersResult.msg;
+                            confirm.type = 'error';
+                            confirm.showConfirmButton = false;
+                        }
+                    }
+
+                    if (confirm.msg.length > 120) {
+                        confirm.msg = confirm.msg.substring(0, 120) + '...';
+                    }
+
+                    vue.$data.surveyAnswers = generateAnswersResult.data;
+
+                    if (!vue.$data.dialogVisible) {
+                        ELEMENT.MessageBox.confirm(confirm.msg, '提示', {
+                            confirmButtonText: '查看答案',
+                            cancelButtonText: '关闭',
+                            type: confirm.type,
+                            dangerouslyUseHTMLString: true,
+                            showConfirmButton: confirm.showConfirmButton,
+                        }).then(() => {
+                            // 显示答案查看对话框
+                            vue.$data.dialogVisible = true;
+                        });
+                    }
+                } else {
+                    ELEMENT.MessageBox.alert(generateAnswersResult.msg, '生成答案失败', {type: 'error'});
+                }
+            }
+
+            // 查看答案
+            function preAnswers() {
+                if (vue.$data.surveyAnswers?.length > 0) {
+                    vue.$data.dialogVisible = true;
+                    return;
+                }
+                generateAnswers();
+            }
+
+            // 保存规则及答案
+            function saveSurveyAndAnswers() {
+                // 调用JAVA保存
+                var result = surveyService.saveSurvey(JSON.stringify(vue.$data.survey), JSON.stringify(vue.$data.surveyAnswers));
+                var saveSurveyResult = JSON.parse(result);
+                if (saveSurveyResult?.code === 200) {
+                    ELEMENT.MessageBox('保存成功', {
+                        type: 'success'
+                    });
+                } else {
+                    ELEMENT.MessageBox.alert(saveSurveyResult?.msg, '保存失败', {type: 'error'});
+                }
+            }
+
+            function exportExcel() {
+                var xlsxParam = { raw: true }
+                let fix = document.querySelector(".el-table__fixed");
+                let wb;
+                if (fix) {
+                    wb = XLSX.utils.table_to_book(
+                        document.querySelector("#answerTable").removeChild(fix)
+                    );
+                    document.querySelector("#answerTable").appendChild(fix);
+                } else {
+                    wb = XLSX.utils.table_to_book(document.querySelector("#table_data"),xlsxParam);
+                }
+                let wbout = XLSX.write(wb, {bookType: "xlsx", bookSST: true, type: "array",});
+
+                try {
+                    saveAs(new Blob([wbout], { type: "application/octet-stream" }), "xxx.xlsx");
+                } catch (e) {
+                    if (typeof console !== "undefined") console.log(e, wbout);
+                }
+
+                return wbout;
+            }
+
+            return {
+                survey: {},
+                surveyAnswers: [],
+                tableCellClassName,
+                dialogVisible: false,
+                dialogFullscreen: false,
+                addRule,
+                delRule,
+                addOption,
+                delOption,
+                repeatRule,
+                repeatNextRule,
+                repeatSubjectOption,
+                generateAnswers,
+                preAnswers,
+                saveSurveyAndAnswers,
+                exportExcel,
+            }
+        }
+    });
+    // 监听错误
+    window.onerror = function (message, source, lineno, colno, error) {
+        console.log('An error occurred:', message);
+        console.log('Source:', source);
+        console.log('Line:', lineno);
+        console.log('Column:', colno);
+        console.log('Error object:', error);
+
+        ELEMENT.MessageBox(JSON.stringify(message), {
+            type: 'error'
+        });
+    };
+
+    // 设置问卷数据
+    function setSurvey(data) {
+        vue.$data.survey = {};
+        data = data.replace(/\s+/g, " "); // 传过来的JSON字符串可能存在中文字符，得去掉
+        vue.$data.survey = eval('(' + data + ')');
+    }
+
+    function setSurveyAnswers(data) {
+        vue.$data.surveyAnswers = {};
+        data = data.replace(/\s+/g, " "); // 传过来的JSON字符串可能存在中文字符，得去掉
+        vue.$data.surveyAnswers = eval('(' + data + ')');
+    }
+
+    setTimeout(() => {
+        if (!(vue.$data.survey?.subjects?.length > 0)) {
+            ELEMENT.MessageBox({
+                message: '加载超时',
+                type: 'error'
+            });
+        }
+    }, 10000);
+
+    setSurvey('{"assignProxy":false,"count":10,"description":"您好！我是来自北京大学新媒体研究院的学生，该问卷是基于对杭州第19届亚运会抖音号传播效果想要寻求您的意见与看法。本调查面向该账号所有受众，设计了涵盖现状调查、满意度调查、参与度调查等多维度的调查问卷。 问卷采取不记名方式，填写信息将被保密。请您如实填写，并提供积极的参考建议。您的参与很重要，您填写的数据将和大家的数据一起，被整理成专项调研报告。衷心感谢您的支持与协助！ 本问卷填答时间约为10分钟。 ","domain":"问卷星","id":"20240418205532_问卷星_Hy65WS","subjects":[{"atLeastBegin":0,"atLeastEnd":0,"no":1,"options":[{"content":"会","defaultSelectance":0,"disabled":false,"rules":[],"tab":"A"},{"content":"完全不会","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"}],"question":"杭州亚运会期间，你会看相关赛事信息吗?","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":2,"options":[{"content":"是","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"会看抖音的赛事内容，但不是主要渠道","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"不看抖音","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"}],"question":"杭州亚运会期间，抖音是否是你接收赛事信息的主要渠道?","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":3,"options":[{"content":"百度","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"快手","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"微博","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"小红书","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"bilibili","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"微信公众号","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"微信视频号","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"电视、广播","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"},{"content":"报纸","defaultSelectance":0,"disabled":false,"rules":[],"tab":"I"},{"content":"爱奇艺、腾讯视频、优酷等流媒体平台","defaultSelectance":0,"disabled":false,"rules":[],"tab":"J"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"K"}],"question":"您还会通过哪些渠道接收赛事信息?【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":4,"options":[{"content":"省时间","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"节省数据流量","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"不受时间地点限制","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"能够互动","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"易于分享","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"内容种类丰富","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"实时赛事更新","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"娱乐元素丰富","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"},{"content":"获取赛事精华集锦和高光时刻，无需观看整场比赛","defaultSelectance":0,"disabled":false,"rules":[],"tab":"I"},{"content":"短视频平台算法优越，可以给人个性化内容推荐","defaultSelectance":0,"disabled":false,"rules":[],"tab":"J"},{"content":"我不看短视频平台","defaultSelectance":0,"disabled":false,"rules":[],"tab":"K"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"L"}],"question":"如果你选择的是短视频平台，请问原因是","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":5,"options":[{"content":"是","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"否","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"}],"question":"您是否会观看杭州第19届亚运会官方抖音账号的短视频?","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":6,"options":[{"content":"精彩比赛瞬间","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"赛事剪辑回归","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"新闻报导","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"赛事解说","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"运动员专访","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"}],"question":"在杭州第19届亚运会官方抖音账号的短视频中，您更青睐观看哪些类型的短视频[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":7,"options":[{"content":"30秒以内","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"30-60秒","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"1-2分钟","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"2-5分钟","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"5分钟以上","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"您更喜欢观看其中时长为多少的短视频","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":8,"options":[{"content":"体育人物","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"赛事高光","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"评论区互动","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"体育技术讲解","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"杭州第19届亚运会官方抖音账号发布的视频中出现什么元素会使你更加感兴趣?[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":9,"options":[{"content":"点赞","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"评论","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"转发","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"收藏","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"以上均无","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"在观看杭州第19届亚运会官方抖音账号的短视频中，有没有点赞、评论、转发、收藏的行为?[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":10,"options":[{"content":"画面精彩","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"讲解精彩","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"有学习价值","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"文案趣味性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"评论区互动性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"情感被调动","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"}],"question":"什么因素促使你做出这样的动作?[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":11,"options":[{"content":"1分 很不满意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"2分 不满意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"3分 一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"4分 满意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"5分 很满意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"请您对杭州第19届亚运会官方抖音账号打分，分数越高，说明您对官方账号的评价越高","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":12,"options":[{"content":"1分 很不满意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"2分 不满意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"3分 一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"4分 满意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"5分 很满意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"此处请您选择“4满意”","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":13,"options":[{"content":"标题设计","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"内容选择","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"剪辑","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"配乐","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"评论等用户互动","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"}],"question":"哪些原因影响了你对杭州第19届亚运会官方抖音账号的评价?[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":14,"options":[{"content":"内容多样性不足，主题单一","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"互动性不强，如缺少问答、抽奖和投票","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"更新频率不够","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"技术质量不好，视频的拍摄、剪辑或音质不达标","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"信息量太大，导致人们难以吸收和理解","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"缺乏故事性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"未充分考虑到多元文化背景下的敏感性，引起误解或不适","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"未充分展示杭州及中国文化","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"},{"content":"缺乏国际视角","defaultSelectance":0,"disabled":false,"rules":[],"tab":"I"},{"content":"未突出亚运会的独特价值和精神","defaultSelectance":0,"disabled":false,"rules":[],"tab":"J"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"K"},{"content":"无不足之处","defaultSelectance":0,"disabled":false,"rules":[],"tab":"L"}],"question":"您认为杭州第19届亚运会抖音号的短视频有哪些不足之处?【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":15,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。内容创意性","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":16,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。能迎合社会热点","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":17,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。能捕捉精彩瞬间","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":18,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。画面高清晰度","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":19,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。剪辑紧凑","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":20,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。背景音乐和声效恰当","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":21,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。强烈的情感投入","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":22,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。科普教育意义","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":23,"options":[{"content":"完全不重要","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不重要","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常重要","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"就您对体育类赛事账号的观看经验而言，您觉得这些因素（下列）对于一个优秀的体育赛事短视频账号来说有多重要?。包含互动元素","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":24,"options":[{"content":"专业性","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"创意性","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"科普性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"趣味性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"您觉得，一个优秀的体育短视频账号，标题/文案应该具备以下哪些特性?[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":25,"options":[{"content":"专业性","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"创意性","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"科普性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"趣味性","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"您觉得，一个优秀的体育短视频账号，视听语言/画外音应该具备以下哪些特性?[可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":26,"options":[{"content":"政治能力","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"经济实力","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"军事能力","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"科技创新","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"文化影响力","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"体育竞技实力","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"国际影响力与外交政策","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"环境责任","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"},{"content":"教育和研究","defaultSelectance":0,"disabled":false,"rules":[],"tab":"I"},{"content":"国际援助和人道主义贡献","defaultSelectance":0,"disabled":false,"rules":[],"tab":"J"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"K"}],"question":"您觉得，一个大国形象是由哪些方面构成的? [可多选]【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":27,"options":[{"content":"有","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"完全没有","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"}],"question":"在您观看了杭州第19届亚运会官方抖音账号后，您对国家形象有了新的认识了吗?","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":28,"options":[{"content":"有极大助力","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"有一定助力","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"基本无帮助","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"完全无帮助","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"您认为短视频传播是否助力了我国形象塑造以及正面传播?","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":29,"options":[{"content":"有影响","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"完全没有影响","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"}],"question":"您认为短视频的互动（转赞评）对国家形象的塑造有没有影响?","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":30,"options":[{"content":"","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"}],"question":"您能否举例说明杭州第19届亚运会官方抖音账号上哪些内容让您对国家形象有了新的认识?","require":true,"type":"填空题"},{"atLeastBegin":0,"atLeastEnd":0,"no":31,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我对体育赛事的热情更强烈了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":32,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我对国家的信心增强了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":33,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我对国家的自豪感提升了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":34,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我更认可我国的国际影响力了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":35,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我更热爱我国的体育运动员们了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":36,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我对我国体育赛事的前景更有信心了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":37,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我对体育赛事的热情更弱了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":38,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我对国家更具有情感共鸣了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":39,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。此处请您选择“2基本不同意”","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":40,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我更愿意积极参与到国家建设之中","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":41,"options":[{"content":"完全不同意","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"基本不同意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"比较同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"非常同意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"以下说法您在多大程度上同意? 在我观看了第19届亚运会抖音官方账号后，。我更认可我国的大国形象了","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":42,"options":[{"content":"提升了公众认知","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"提升了公众的情感共鸣","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"促进了公众参与","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"提升了国际影响力","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"提供了民意反馈渠道","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"促进了不同地区、民族人民的交流","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"无任何影响","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"其他","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"}],"question":"您认为短视频的互动（转赞评）对国家形象的塑造有哪些影响?【多选题】","require":true,"type":"多选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":43,"options":[{"content":"1分 很不关注","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"2分 不满意","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"3分 一般","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"4分 满意","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"5分 很关注","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"}],"question":"现在，请您为自己对杭州第19届亚运会的关注度打分，分数越高，表示您越关注杭州亚运会。","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":44,"options":[{"content":"女","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"男","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"}],"question":"您的性别","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":45,"options":[{"content":"12岁以下","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"13-17岁","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"18-22岁","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"23-30岁","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"31-40岁","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"41-50岁","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"51-60岁","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"60岁以上","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"}],"question":"您的年龄","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":46,"options":[{"content":"未受过正式教育","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"},{"content":"小学","defaultSelectance":68,"disabled":false,"rules":[],"tab":"B"},{"content":"初中","defaultSelectance":0,"disabled":false,"rules":[],"tab":"C"},{"content":"高中、职高、技校","defaultSelectance":0,"disabled":false,"rules":[],"tab":"D"},{"content":"大专","defaultSelectance":0,"disabled":false,"rules":[],"tab":"E"},{"content":"本科","defaultSelectance":0,"disabled":false,"rules":[],"tab":"F"},{"content":"硕士","defaultSelectance":0,"disabled":false,"rules":[],"tab":"G"},{"content":"博士","defaultSelectance":0,"disabled":false,"rules":[],"tab":"H"}],"question":"您的最高受教育水平","require":true,"type":"单选题"},{"atLeastBegin":0,"atLeastEnd":0,"no":47,"options":[{"content":"","defaultSelectance":44,"disabled":false,"rules":[],"tab":"A"}],"question":"您的常住城市是？","require":true,"type":"填空题"}],"topic":"杭州亚运会抖音官方账号传播调研","url":"https://www.wjx.cn/vm/esdlv1k.aspx"}');
+    setSurveyAnswers('[[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["B"],"no":2,"systemAnswers":[]},{"answers":["A"],"no":3,"systemAnswers":[]},{"answers":["A"],"no":4,"systemAnswers":[]},{"answers":["A"],"no":5,"systemAnswers":[]},{"answers":["B"],"no":6,"systemAnswers":[]},{"answers":["B"],"no":7,"systemAnswers":[]},{"answers":["B"],"no":8,"systemAnswers":[]},{"answers":["A","B"],"no":9,"systemAnswers":[]},{"answers":["A"],"no":10,"systemAnswers":[]},{"answers":["A"],"no":11,"systemAnswers":[]},{"answers":["A"],"no":12,"systemAnswers":[]},{"answers":["A"],"no":13,"systemAnswers":[]},{"answers":["A"],"no":14,"systemAnswers":[]},{"answers":["B"],"no":15,"systemAnswers":[]},{"answers":["B"],"no":16,"systemAnswers":[]},{"answers":["A"],"no":17,"systemAnswers":[]},{"answers":["A"],"no":18,"systemAnswers":[]},{"answers":["B"],"no":19,"systemAnswers":[]},{"answers":["B"],"no":20,"systemAnswers":[]},{"answers":["A"],"no":21,"systemAnswers":[]},{"answers":["A"],"no":22,"systemAnswers":[]},{"answers":["B"],"no":23,"systemAnswers":[]},{"answers":["B"],"no":24,"systemAnswers":[]},{"answers":["B"],"no":25,"systemAnswers":[]},{"answers":["B"],"no":26,"systemAnswers":[]},{"answers":["B"],"no":27,"systemAnswers":[]},{"answers":["B"],"no":28,"systemAnswers":[]},{"answers":["B"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":[]},{"answers":["A"],"no":31,"systemAnswers":[]},{"answers":["B"],"no":32,"systemAnswers":[]},{"answers":["A"],"no":33,"systemAnswers":[]},{"answers":["A"],"no":34,"systemAnswers":[]},{"answers":["B"],"no":35,"systemAnswers":[]},{"answers":["A"],"no":36,"systemAnswers":[]},{"answers":["B"],"no":37,"systemAnswers":[]},{"answers":["A"],"no":38,"systemAnswers":[]},{"answers":["B"],"no":39,"systemAnswers":[]},{"answers":["B"],"no":40,"systemAnswers":[]},{"answers":["B"],"no":41,"systemAnswers":[]},{"answers":["A"],"no":42,"systemAnswers":[]},{"answers":["A"],"no":43,"systemAnswers":[]},{"answers":["A"],"no":44,"systemAnswers":[]},{"answers":["A"],"no":45,"systemAnswers":[]},{"answers":["B"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":["A"]}],[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["A"],"no":2,"systemAnswers":[]},{"answers":["B"],"no":3,"systemAnswers":[]},{"answers":["A"],"no":4,"systemAnswers":[]},{"answers":["B"],"no":5,"systemAnswers":[]},{"answers":["B"],"no":6,"systemAnswers":[]},{"answers":["A"],"no":7,"systemAnswers":[]},{"answers":["B"],"no":8,"systemAnswers":[]},{"answers":["A","B"],"no":9,"systemAnswers":[]},{"answers":["A"],"no":10,"systemAnswers":[]},{"answers":["A"],"no":11,"systemAnswers":[]},{"answers":["A"],"no":12,"systemAnswers":[]},{"answers":["B"],"no":13,"systemAnswers":[]},{"answers":["A","B"],"no":14,"systemAnswers":[]},{"answers":["A"],"no":15,"systemAnswers":[]},{"answers":["B"],"no":16,"systemAnswers":[]},{"answers":["B"],"no":17,"systemAnswers":[]},{"answers":["A"],"no":18,"systemAnswers":[]},{"answers":["A"],"no":19,"systemAnswers":[]},{"answers":["A"],"no":20,"systemAnswers":[]},{"answers":["B"],"no":21,"systemAnswers":[]},{"answers":["A"],"no":22,"systemAnswers":[]},{"answers":["A"],"no":23,"systemAnswers":[]},{"answers":["B"],"no":24,"systemAnswers":[]},{"answers":["B"],"no":25,"systemAnswers":[]},{"answers":["A"],"no":26,"systemAnswers":[]},{"answers":["A"],"no":27,"systemAnswers":[]},{"answers":["A"],"no":28,"systemAnswers":[]},{"answers":["B"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":[]},{"answers":["A"],"no":31,"systemAnswers":[]},{"answers":["B"],"no":32,"systemAnswers":[]},{"answers":["B"],"no":33,"systemAnswers":[]},{"answers":["B"],"no":34,"systemAnswers":[]},{"answers":["A"],"no":35,"systemAnswers":[]},{"answers":["B"],"no":36,"systemAnswers":[]},{"answers":["B"],"no":37,"systemAnswers":[]},{"answers":["A"],"no":38,"systemAnswers":[]},{"answers":["B"],"no":39,"systemAnswers":[]},{"answers":["B"],"no":40,"systemAnswers":[]},{"answers":["B"],"no":41,"systemAnswers":[]},{"answers":["B"],"no":42,"systemAnswers":[]},{"answers":["B"],"no":43,"systemAnswers":[]},{"answers":["B"],"no":44,"systemAnswers":[]},{"answers":["B"],"no":45,"systemAnswers":[]},{"answers":["B"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":["A"]}],[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["B"],"no":2,"systemAnswers":[]},{"answers":["A","B"],"no":3,"systemAnswers":[]},{"answers":["B"],"no":4,"systemAnswers":[]},{"answers":["B"],"no":5,"systemAnswers":[]},{"answers":["A"],"no":6,"systemAnswers":[]},{"answers":["B"],"no":7,"systemAnswers":[]},{"answers":["B"],"no":8,"systemAnswers":[]},{"answers":["A"],"no":9,"systemAnswers":[]},{"answers":["B"],"no":10,"systemAnswers":[]},{"answers":["B"],"no":11,"systemAnswers":[]},{"answers":["B"],"no":12,"systemAnswers":[]},{"answers":["A","B"],"no":13,"systemAnswers":[]},{"answers":["B"],"no":14,"systemAnswers":[]},{"answers":["B"],"no":15,"systemAnswers":[]},{"answers":["B"],"no":16,"systemAnswers":[]},{"answers":["B"],"no":17,"systemAnswers":[]},{"answers":["A"],"no":18,"systemAnswers":[]},{"answers":["A"],"no":19,"systemAnswers":[]},{"answers":["B"],"no":20,"systemAnswers":[]},{"answers":["A"],"no":21,"systemAnswers":[]},{"answers":["A"],"no":22,"systemAnswers":[]},{"answers":["B"],"no":23,"systemAnswers":[]},{"answers":["A"],"no":24,"systemAnswers":[]},{"answers":["B"],"no":25,"systemAnswers":[]},{"answers":["A","B"],"no":26,"systemAnswers":[]},{"answers":["B"],"no":27,"systemAnswers":[]},{"answers":["B"],"no":28,"systemAnswers":[]},{"answers":["A"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":[]},{"answers":["A"],"no":31,"systemAnswers":[]},{"answers":["B"],"no":32,"systemAnswers":[]},{"answers":["A"],"no":33,"systemAnswers":[]},{"answers":["A"],"no":34,"systemAnswers":[]},{"answers":["B"],"no":35,"systemAnswers":[]},{"answers":["B"],"no":36,"systemAnswers":[]},{"answers":["A"],"no":37,"systemAnswers":[]},{"answers":["B"],"no":38,"systemAnswers":[]},{"answers":["A"],"no":39,"systemAnswers":[]},{"answers":["A"],"no":40,"systemAnswers":[]},{"answers":["A"],"no":41,"systemAnswers":[]},{"answers":["B"],"no":42,"systemAnswers":[]},{"answers":["A"],"no":43,"systemAnswers":[]},{"answers":["A"],"no":44,"systemAnswers":[]},{"answers":["B"],"no":45,"systemAnswers":[]},{"answers":["B"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":["A"]}],[{"answers":["B"],"no":1,"systemAnswers":["B"]},{"answers":["B"],"no":2,"systemAnswers":[]},{"answers":["B"],"no":3,"systemAnswers":[]},{"answers":["B"],"no":4,"systemAnswers":[]},{"answers":["A"],"no":5,"systemAnswers":[]},{"answers":["A","B"],"no":6,"systemAnswers":[]},{"answers":["A"],"no":7,"systemAnswers":[]},{"answers":["A","B"],"no":8,"systemAnswers":[]},{"answers":["B"],"no":9,"systemAnswers":[]},{"answers":["B"],"no":10,"systemAnswers":[]},{"answers":["B"],"no":11,"systemAnswers":[]},{"answers":["A"],"no":12,"systemAnswers":[]},{"answers":["B"],"no":13,"systemAnswers":[]},{"answers":["B"],"no":14,"systemAnswers":[]},{"answers":["A"],"no":15,"systemAnswers":[]},{"answers":["A"],"no":16,"systemAnswers":[]},{"answers":["B"],"no":17,"systemAnswers":[]},{"answers":["A"],"no":18,"systemAnswers":[]},{"answers":["A"],"no":19,"systemAnswers":[]},{"answers":["B"],"no":20,"systemAnswers":[]},{"answers":["A"],"no":21,"systemAnswers":[]},{"answers":["B"],"no":22,"systemAnswers":[]},{"answers":["A"],"no":23,"systemAnswers":[]},{"answers":["B"],"no":24,"systemAnswers":[]},{"answers":["B"],"no":25,"systemAnswers":[]},{"answers":["B"],"no":26,"systemAnswers":[]},{"answers":["A"],"no":27,"systemAnswers":[]},{"answers":["A"],"no":28,"systemAnswers":[]},{"answers":["A"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":["A"]},{"answers":["A"],"no":31,"systemAnswers":[]},{"answers":["B"],"no":32,"systemAnswers":[]},{"answers":["A"],"no":33,"systemAnswers":[]},{"answers":["A"],"no":34,"systemAnswers":[]},{"answers":["B"],"no":35,"systemAnswers":[]},{"answers":["B"],"no":36,"systemAnswers":[]},{"answers":["A"],"no":37,"systemAnswers":[]},{"answers":["A"],"no":38,"systemAnswers":[]},{"answers":["A"],"no":39,"systemAnswers":[]},{"answers":["A"],"no":40,"systemAnswers":[]},{"answers":["B"],"no":41,"systemAnswers":[]},{"answers":["A","B"],"no":42,"systemAnswers":[]},{"answers":["A"],"no":43,"systemAnswers":[]},{"answers":["B"],"no":44,"systemAnswers":[]},{"answers":["B"],"no":45,"systemAnswers":[]},{"answers":["A"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":[]}],[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["A"],"no":2,"systemAnswers":[]},{"answers":["B"],"no":3,"systemAnswers":[]},{"answers":["B"],"no":4,"systemAnswers":[]},{"answers":["B"],"no":5,"systemAnswers":[]},{"answers":["B"],"no":6,"systemAnswers":[]},{"answers":["A"],"no":7,"systemAnswers":[]},{"answers":["A"],"no":8,"systemAnswers":[]},{"answers":["A"],"no":9,"systemAnswers":[]},{"answers":["B"],"no":10,"systemAnswers":[]},{"answers":["B"],"no":11,"systemAnswers":[]},{"answers":["A"],"no":12,"systemAnswers":[]},{"answers":["A","B"],"no":13,"systemAnswers":[]},{"answers":["A"],"no":14,"systemAnswers":[]},{"answers":["B"],"no":15,"systemAnswers":[]},{"answers":["A"],"no":16,"systemAnswers":[]},{"answers":["A"],"no":17,"systemAnswers":[]},{"answers":["B"],"no":18,"systemAnswers":[]},{"answers":["B"],"no":19,"systemAnswers":[]},{"answers":["A"],"no":20,"systemAnswers":[]},{"answers":["B"],"no":21,"systemAnswers":[]},{"answers":["A"],"no":22,"systemAnswers":[]},{"answers":["B"],"no":23,"systemAnswers":[]},{"answers":["B"],"no":24,"systemAnswers":[]},{"answers":["A","B"],"no":25,"systemAnswers":[]},{"answers":["B"],"no":26,"systemAnswers":[]},{"answers":["A"],"no":27,"systemAnswers":[]},{"answers":["A"],"no":28,"systemAnswers":[]},{"answers":["A"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":["A"]},{"answers":["B"],"no":31,"systemAnswers":[]},{"answers":["A"],"no":32,"systemAnswers":[]},{"answers":["B"],"no":33,"systemAnswers":[]},{"answers":["B"],"no":34,"systemAnswers":[]},{"answers":["A"],"no":35,"systemAnswers":[]},{"answers":["B"],"no":36,"systemAnswers":[]},{"answers":["A"],"no":37,"systemAnswers":[]},{"answers":["B"],"no":38,"systemAnswers":[]},{"answers":["B"],"no":39,"systemAnswers":[]},{"answers":["B"],"no":40,"systemAnswers":[]},{"answers":["A"],"no":41,"systemAnswers":[]},{"answers":["B"],"no":42,"systemAnswers":[]},{"answers":["B"],"no":43,"systemAnswers":[]},{"answers":["B"],"no":44,"systemAnswers":[]},{"answers":["B"],"no":45,"systemAnswers":[]},{"answers":["B"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":[]}],[{"answers":["B"],"no":1,"systemAnswers":["B"]},{"answers":["A"],"no":2,"systemAnswers":[]},{"answers":["B"],"no":3,"systemAnswers":[]},{"answers":["B"],"no":4,"systemAnswers":[]},{"answers":["B"],"no":5,"systemAnswers":[]},{"answers":["A","B"],"no":6,"systemAnswers":[]},{"answers":["A"],"no":7,"systemAnswers":[]},{"answers":["B"],"no":8,"systemAnswers":[]},{"answers":["B"],"no":9,"systemAnswers":[]},{"answers":["A","B"],"no":10,"systemAnswers":[]},{"answers":["A"],"no":11,"systemAnswers":[]},{"answers":["B"],"no":12,"systemAnswers":[]},{"answers":["A"],"no":13,"systemAnswers":[]},{"answers":["B"],"no":14,"systemAnswers":[]},{"answers":["A"],"no":15,"systemAnswers":[]},{"answers":["B"],"no":16,"systemAnswers":[]},{"answers":["A"],"no":17,"systemAnswers":[]},{"answers":["B"],"no":18,"systemAnswers":[]},{"answers":["B"],"no":19,"systemAnswers":[]},{"answers":["A"],"no":20,"systemAnswers":[]},{"answers":["A"],"no":21,"systemAnswers":[]},{"answers":["A"],"no":22,"systemAnswers":[]},{"answers":["A"],"no":23,"systemAnswers":[]},{"answers":["B"],"no":24,"systemAnswers":[]},{"answers":["A","B"],"no":25,"systemAnswers":[]},{"answers":["B"],"no":26,"systemAnswers":[]},{"answers":["A"],"no":27,"systemAnswers":[]},{"answers":["B"],"no":28,"systemAnswers":[]},{"answers":["A"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":[]},{"answers":["B"],"no":31,"systemAnswers":[]},{"answers":["A"],"no":32,"systemAnswers":[]},{"answers":["B"],"no":33,"systemAnswers":[]},{"answers":["B"],"no":34,"systemAnswers":[]},{"answers":["A"],"no":35,"systemAnswers":[]},{"answers":["A"],"no":36,"systemAnswers":[]},{"answers":["B"],"no":37,"systemAnswers":[]},{"answers":["A"],"no":38,"systemAnswers":[]},{"answers":["A"],"no":39,"systemAnswers":[]},{"answers":["A"],"no":40,"systemAnswers":[]},{"answers":["A"],"no":41,"systemAnswers":[]},{"answers":["B"],"no":42,"systemAnswers":[]},{"answers":["B"],"no":43,"systemAnswers":[]},{"answers":["A"],"no":44,"systemAnswers":[]},{"answers":["A"],"no":45,"systemAnswers":[]},{"answers":["B"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":[]}],[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["B"],"no":2,"systemAnswers":[]},{"answers":["B"],"no":3,"systemAnswers":[]},{"answers":["B"],"no":4,"systemAnswers":[]},{"answers":["B"],"no":5,"systemAnswers":[]},{"answers":["A"],"no":6,"systemAnswers":[]},{"answers":["B"],"no":7,"systemAnswers":[]},{"answers":["A"],"no":8,"systemAnswers":[]},{"answers":["B"],"no":9,"systemAnswers":[]},{"answers":["A","B"],"no":10,"systemAnswers":[]},{"answers":["A"],"no":11,"systemAnswers":[]},{"answers":["B"],"no":12,"systemAnswers":[]},{"answers":["B"],"no":13,"systemAnswers":[]},{"answers":["B"],"no":14,"systemAnswers":[]},{"answers":["B"],"no":15,"systemAnswers":[]},{"answers":["A"],"no":16,"systemAnswers":[]},{"answers":["A"],"no":17,"systemAnswers":[]},{"answers":["A"],"no":18,"systemAnswers":[]},{"answers":["B"],"no":19,"systemAnswers":[]},{"answers":["A"],"no":20,"systemAnswers":[]},{"answers":["B"],"no":21,"systemAnswers":[]},{"answers":["B"],"no":22,"systemAnswers":[]},{"answers":["A"],"no":23,"systemAnswers":[]},{"answers":["A","B"],"no":24,"systemAnswers":[]},{"answers":["A"],"no":25,"systemAnswers":[]},{"answers":["A","B"],"no":26,"systemAnswers":[]},{"answers":["B"],"no":27,"systemAnswers":[]},{"answers":["B"],"no":28,"systemAnswers":[]},{"answers":["B"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":["A"]},{"answers":["B"],"no":31,"systemAnswers":[]},{"answers":["A"],"no":32,"systemAnswers":[]},{"answers":["B"],"no":33,"systemAnswers":[]},{"answers":["B"],"no":34,"systemAnswers":[]},{"answers":["B"],"no":35,"systemAnswers":[]},{"answers":["A"],"no":36,"systemAnswers":[]},{"answers":["B"],"no":37,"systemAnswers":[]},{"answers":["A"],"no":38,"systemAnswers":[]},{"answers":["B"],"no":39,"systemAnswers":[]},{"answers":["B"],"no":40,"systemAnswers":[]},{"answers":["B"],"no":41,"systemAnswers":[]},{"answers":["B"],"no":42,"systemAnswers":[]},{"answers":["B"],"no":43,"systemAnswers":[]},{"answers":["A"],"no":44,"systemAnswers":[]},{"answers":["A"],"no":45,"systemAnswers":[]},{"answers":["A"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":["A"]}],[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["A"],"no":2,"systemAnswers":[]},{"answers":["A"],"no":3,"systemAnswers":[]},{"answers":["A"],"no":4,"systemAnswers":[]},{"answers":["A"],"no":5,"systemAnswers":[]},{"answers":["B"],"no":6,"systemAnswers":[]},{"answers":["A"],"no":7,"systemAnswers":[]},{"answers":["B"],"no":8,"systemAnswers":[]},{"answers":["A"],"no":9,"systemAnswers":[]},{"answers":["A"],"no":10,"systemAnswers":[]},{"answers":["B"],"no":11,"systemAnswers":[]},{"answers":["A"],"no":12,"systemAnswers":[]},{"answers":["B"],"no":13,"systemAnswers":[]},{"answers":["A"],"no":14,"systemAnswers":[]},{"answers":["A"],"no":15,"systemAnswers":[]},{"answers":["A"],"no":16,"systemAnswers":[]},{"answers":["A"],"no":17,"systemAnswers":[]},{"answers":["B"],"no":18,"systemAnswers":[]},{"answers":["B"],"no":19,"systemAnswers":[]},{"answers":["B"],"no":20,"systemAnswers":[]},{"answers":["B"],"no":21,"systemAnswers":[]},{"answers":["B"],"no":22,"systemAnswers":[]},{"answers":["A"],"no":23,"systemAnswers":[]},{"answers":["A"],"no":24,"systemAnswers":[]},{"answers":["A"],"no":25,"systemAnswers":[]},{"answers":["A"],"no":26,"systemAnswers":[]},{"answers":["A"],"no":27,"systemAnswers":[]},{"answers":["A"],"no":28,"systemAnswers":[]},{"answers":["B"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":["A"]},{"answers":["B"],"no":31,"systemAnswers":[]},{"answers":["A"],"no":32,"systemAnswers":[]},{"answers":["A"],"no":33,"systemAnswers":[]},{"answers":["A"],"no":34,"systemAnswers":[]},{"answers":["A"],"no":35,"systemAnswers":[]},{"answers":["A"],"no":36,"systemAnswers":[]},{"answers":["B"],"no":37,"systemAnswers":[]},{"answers":["B"],"no":38,"systemAnswers":[]},{"answers":["B"],"no":39,"systemAnswers":[]},{"answers":["B"],"no":40,"systemAnswers":[]},{"answers":["B"],"no":41,"systemAnswers":[]},{"answers":["A"],"no":42,"systemAnswers":[]},{"answers":["A"],"no":43,"systemAnswers":[]},{"answers":["B"],"no":44,"systemAnswers":[]},{"answers":["B"],"no":45,"systemAnswers":[]},{"answers":["A"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":[]}],[{"answers":["B"],"no":1,"systemAnswers":["B"]},{"answers":["A"],"no":2,"systemAnswers":[]},{"answers":["A"],"no":3,"systemAnswers":[]},{"answers":["A"],"no":4,"systemAnswers":[]},{"answers":["A"],"no":5,"systemAnswers":[]},{"answers":["B"],"no":6,"systemAnswers":[]},{"answers":["B"],"no":7,"systemAnswers":[]},{"answers":["A","B"],"no":8,"systemAnswers":[]},{"answers":["B"],"no":9,"systemAnswers":[]},{"answers":["B"],"no":10,"systemAnswers":[]},{"answers":["A"],"no":11,"systemAnswers":[]},{"answers":["B"],"no":12,"systemAnswers":[]},{"answers":["A"],"no":13,"systemAnswers":[]},{"answers":["A","B"],"no":14,"systemAnswers":[]},{"answers":["A"],"no":15,"systemAnswers":[]},{"answers":["A"],"no":16,"systemAnswers":[]},{"answers":["B"],"no":17,"systemAnswers":[]},{"answers":["B"],"no":18,"systemAnswers":[]},{"answers":["A"],"no":19,"systemAnswers":[]},{"answers":["B"],"no":20,"systemAnswers":[]},{"answers":["A"],"no":21,"systemAnswers":[]},{"answers":["B"],"no":22,"systemAnswers":[]},{"answers":["B"],"no":23,"systemAnswers":[]},{"answers":["A","B"],"no":24,"systemAnswers":[]},{"answers":["A"],"no":25,"systemAnswers":[]},{"answers":["B"],"no":26,"systemAnswers":[]},{"answers":["B"],"no":27,"systemAnswers":[]},{"answers":["B"],"no":28,"systemAnswers":[]},{"answers":["A"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":[]},{"answers":["B"],"no":31,"systemAnswers":[]},{"answers":["B"],"no":32,"systemAnswers":[]},{"answers":["A"],"no":33,"systemAnswers":[]},{"answers":["A"],"no":34,"systemAnswers":[]},{"answers":["B"],"no":35,"systemAnswers":[]},{"answers":["B"],"no":36,"systemAnswers":[]},{"answers":["A"],"no":37,"systemAnswers":[]},{"answers":["B"],"no":38,"systemAnswers":[]},{"answers":["A"],"no":39,"systemAnswers":[]},{"answers":["A"],"no":40,"systemAnswers":[]},{"answers":["A"],"no":41,"systemAnswers":[]},{"answers":["A","B"],"no":42,"systemAnswers":[]},{"answers":["B"],"no":43,"systemAnswers":[]},{"answers":["B"],"no":44,"systemAnswers":[]},{"answers":["A"],"no":45,"systemAnswers":[]},{"answers":["A"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":["A"]}],[{"answers":["B"],"no":1,"systemAnswers":[]},{"answers":["B"],"no":2,"systemAnswers":[]},{"answers":["A","B"],"no":3,"systemAnswers":[]},{"answers":["A"],"no":4,"systemAnswers":[]},{"answers":["A"],"no":5,"systemAnswers":[]},{"answers":["A"],"no":6,"systemAnswers":[]},{"answers":["B"],"no":7,"systemAnswers":[]},{"answers":["A"],"no":8,"systemAnswers":[]},{"answers":["B"],"no":9,"systemAnswers":[]},{"answers":["B"],"no":10,"systemAnswers":[]},{"answers":["B"],"no":11,"systemAnswers":[]},{"answers":["B"],"no":12,"systemAnswers":[]},{"answers":["B"],"no":13,"systemAnswers":[]},{"answers":["B"],"no":14,"systemAnswers":[]},{"answers":["B"],"no":15,"systemAnswers":[]},{"answers":["B"],"no":16,"systemAnswers":[]},{"answers":["B"],"no":17,"systemAnswers":[]},{"answers":["B"],"no":18,"systemAnswers":[]},{"answers":["A"],"no":19,"systemAnswers":[]},{"answers":["A"],"no":20,"systemAnswers":[]},{"answers":["B"],"no":21,"systemAnswers":[]},{"answers":["B"],"no":22,"systemAnswers":[]},{"answers":["B"],"no":23,"systemAnswers":[]},{"answers":["A"],"no":24,"systemAnswers":[]},{"answers":["B"],"no":25,"systemAnswers":[]},{"answers":["A"],"no":26,"systemAnswers":[]},{"answers":["B"],"no":27,"systemAnswers":[]},{"answers":["A"],"no":28,"systemAnswers":[]},{"answers":["B"],"no":29,"systemAnswers":[]},{"answers":["A"],"no":30,"systemAnswers":["A"]},{"answers":["A"],"no":31,"systemAnswers":[]},{"answers":["A"],"no":32,"systemAnswers":[]},{"answers":["B"],"no":33,"systemAnswers":[]},{"answers":["B"],"no":34,"systemAnswers":[]},{"answers":["A"],"no":35,"systemAnswers":[]},{"answers":["A"],"no":36,"systemAnswers":[]},{"answers":["A"],"no":37,"systemAnswers":[]},{"answers":["B"],"no":38,"systemAnswers":[]},{"answers":["A"],"no":39,"systemAnswers":[]},{"answers":["A"],"no":40,"systemAnswers":[]},{"answers":["A"],"no":41,"systemAnswers":[]},{"answers":["A"],"no":42,"systemAnswers":[]},{"answers":["A"],"no":43,"systemAnswers":[]},{"answers":["A"],"no":44,"systemAnswers":[]},{"answers":["A"],"no":45,"systemAnswers":[]},{"answers":["A"],"no":46,"systemAnswers":[]},{"answers":["A"],"no":47,"systemAnswers":[]}]]');
+</script>
+</html>

@@ -1,0 +1,166 @@
+.b {
+    border: 1px solid red;
+}
+
+body {
+    font-size: 16px;
+    user-select: none;
+    font-family: "PingFang SC", "helvetica neue", "arial", "阿里巴巴普惠体", "思源黑体 CN", "microsoft yahei ui", "microsoft yahei", "sans-serif";
+    color: rgb(38, 38, 38);
+    position: relative;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    font-variant-ligatures: none;
+    text-size-adjust: 100% !important;
+    background: rgb(255, 255, 255);
+}
+
+div {
+    display: block;
+}
+
+.headsplitdiv {
+    display: block;
+    height: 80px !important;
+}
+
+.page {
+    margin: 0 40px;
+}
+
+#toptitle {
+    color: #0095FF !important;
+    padding: 50px 100px 20px;
+    background: #fff;
+}
+
+#toptitle .htitle {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 600;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+#divContent {
+    padding: 0 30px 30px;
+}
+
+div.formfield {
+    display: block;
+    padding: 10px 0 26px;
+    margin: 0 20px 16px;
+    clear: both;
+    border-bottom: 1px dashed #ccc;
+}
+
+span.description {
+    font-size: 15px;
+    line-height: 24px;
+    display: block;
+    text-indent: 2em;
+}
+
+span.topichtml {
+    position: relative;
+    font-size: 17px !important;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 0 10px 0 !important;
+    word-wrap: break-word;
+    line-height: 1.52;
+    color: #262626;
+}
+
+span.topichtml-type {
+    color: rgba(126, 126, 126, 0.61);
+    font-size: 17px !important;
+    font-weight: 400;
+
+}
+
+.option-content {
+    display: block;
+    font-size: 16px;
+    color: #595959;
+    text-align: left;
+    line-height: 22px;
+    min-height: 36px;
+    padding: 8px 10px 8px 0;
+    margin-left: 36px;
+}
+
+.el-avatar, .el-cascader-panel, .el-radio, .el-radio--medium.is-bordered .el-radio__label, .el-radio__label {
+    font-size: 15px;
+}
+
+.el-input-tiankong {
+    width: calc(100% - 50px);
+}
+
+.footsubmit {
+    padding: 20px;
+    text-align: center;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    background-color: white;
+    z-index: 9999;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+}
+
+a.btn {
+    font-size: 14px;
+    color: #409EFF;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+a.danger {
+    color: #ff0000;
+}
+
+.el-divider--horizontal {
+    margin: 5px 0;
+}
+
+.selectance .el-slider__bar {
+    background-color: #E6A23C;
+}
+
+.selectance .el-slider__button {
+    border-color: #E6A23C;
+}
+
+.selectance-default .el-slider__button {
+    border-color: #409eff;
+}
+
+.selectance-default .el-slider__bar {
+    background-color: #409eff
+}
+
+.selectance {
+    display: inline-block;
+    width: 100%;
+}
+
+.selectance-right {
+    float: right;
+    line-height: 38px;
+}
+
+.el-slider__input {
+    width: 60px;
+}
+
+.el-slider__runway.show-input {
+    width: calc(100% - 80px);
+}
+
+i {
+    font-size: 18px;
+}
