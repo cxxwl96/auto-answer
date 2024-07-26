@@ -16,9 +16,6 @@
 
 package com.cxxwl96.autoanswer.views;
 
-import cn.hutool.core.lang.Assert;
-import cn.hutool.core.util.NumberUtil;
-import cn.hutool.system.SystemUtil;
 import com.cxxwl96.autoanswer.context.AutoAnswerContext;
 import com.cxxwl96.autoanswer.context.UserSetting;
 import com.cxxwl96.autoanswer.utils.Alert;
@@ -27,6 +24,14 @@ import com.cxxwl96.autoanswer.utils.TextAreaLog;
 import com.cxxwl96.autoanswer.views.component.JFXNumberField;
 import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXTextField;
+
+import java.io.File;
+import java.net.URL;
+import java.util.ResourceBundle;
+
+import cn.hutool.core.lang.Assert;
+import cn.hutool.core.util.NumberUtil;
+import cn.hutool.system.SystemUtil;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -36,10 +41,6 @@ import javafx.scene.input.TransferMode;
 import javafx.stage.Stage;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-
-import java.io.File;
-import java.net.URL;
-import java.util.ResourceBundle;
 
 /**
  * SettingController

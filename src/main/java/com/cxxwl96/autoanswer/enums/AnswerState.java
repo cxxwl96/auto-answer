@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.cxxwl96.autoanswer.enums;
 
 /**
@@ -22,5 +23,8 @@ package com.cxxwl96.autoanswer.enums;
  * @since 2024/3/27 22:38
  */
 public enum AnswerState {
-    INIT, SUCCESS, FAILED, STOP
+    INIT,
+    SUCCESS,
+    FAILED,
+    STOP
 }

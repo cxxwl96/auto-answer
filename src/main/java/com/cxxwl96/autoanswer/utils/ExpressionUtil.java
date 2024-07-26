@@ -58,8 +58,7 @@ public class ExpressionUtil {
         try {
             transferExp = transferExpression(expression, subjectAnswers);
             String result = dealParseExpression(transferExp);
-            log.info("[parse expression] expression: {}, transfer expression: {}, result: {}", expression, transferExp,
-                result);
+            log.info("[parse expression] expression: {}, transfer expression: {}, result: {}", expression, transferExp, result);
             return TRUE.equals(result);
         } catch (StackOverflowError error) {
             log.error("expression: {}, transfer expression: {}", expression, transferExp, error);
@@ -114,8 +113,7 @@ public class ExpressionUtil {
                 }
                 option = option.toUpperCase();
                 // 计算 no+condition+option 是否为真
-                RuntimeException exception = new RuntimeException(
-                    subString(expression, 0, i + 1) + ", 表达式中题目序号不正确");
+                RuntimeException exception = new RuntimeException(subString(expression, 0, i + 1) + ", 表达式中题目序号不正确");
                 if (no >= subjectAnswers.size()) {
                     throw exception;
                 }

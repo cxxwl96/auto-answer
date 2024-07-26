@@ -16,11 +16,6 @@
 
 package com.cxxwl96.autoanswer.service.impl;
 
-import cn.hutool.core.date.LocalDateTimeUtil;
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.resource.ResourceUtil;
-import cn.hutool.core.util.NumberUtil;
-import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSON;
 import com.cxxwl96.autoanswer.context.AutoAnswerContext;
 import com.cxxwl96.autoanswer.context.Script;
@@ -36,8 +31,7 @@ import com.cxxwl96.autoanswer.model.Survey;
 import com.cxxwl96.autoanswer.utils.CodePart;
 import com.cxxwl96.autoanswer.utils.SeleniumUtil;
 import com.cxxwl96.autoanswer.utils.TextAreaLog;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+
 import org.openqa.selenium.JavascriptException;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.TimeoutException;
@@ -55,6 +49,14 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import cn.hutool.core.date.LocalDateTimeUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.resource.ResourceUtil;
+import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.StrUtil;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * SurveyExecutor
  *
@@ -64,6 +66,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SurveyExecutor implements Callable<Result<?>> {
     private static final String EXECUTOR_LOADING_JS = "assets/js/executor-loading.js";
+
     private static final String EXECUTOR_WINDOW_JS = "assets/js/executor-window.js";
 
     // 多少毫秒后执行脚本
@@ -95,8 +98,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
 
     private Consumer<AnswerState> doneConsumer;
 
-    public SurveyExecutor(Survey survey, List<SubjectAnswer> subjectAnswers, int index, Script script,
-                          SubmitInfo submitInfo) {
+    public SurveyExecutor(Survey survey, List<SubjectAnswer> subjectAnswers, int index, Script script, SubmitInfo submitInfo) {
         this.survey = survey;
         this.subjectAnswers = subjectAnswers;
         this.index = index;

@@ -16,17 +16,17 @@
 
 package com.cxxwl96.autoanswer.utils;
 
-import cn.hutool.core.util.NumberUtil;
 import com.cxxwl96.autoanswer.context.AutoAnswerContext;
-import lombok.extern.slf4j.Slf4j;
+
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 
 import java.io.File;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * SeleniumUtil
@@ -37,6 +37,7 @@ import java.util.Set;
 @Slf4j
 public class SeleniumUtil {
     private static final Set<WebDriver> WEB_DRIVERS = new HashSet<>();
+
     private static String chromeBin;
 
     /**

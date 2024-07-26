@@ -16,17 +16,18 @@
 
 package com.cxxwl96.autoanswer.ipproxy;
 
-import cn.hutool.http.HttpResponse;
-import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.cxxwl96.autoanswer.context.AutoAnswerContext;
 import com.cxxwl96.autoanswer.context.Setting;
 import com.cxxwl96.autoanswer.utils.CodePart;
-import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
+import cn.hutool.http.HttpResponse;
+import cn.hutool.http.HttpUtil;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * IpProxy

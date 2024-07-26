@@ -18,6 +18,7 @@ package com.cxxwl96.autoanswer.model;
 
 import com.cxxwl96.autoanswer.enums.ProxyType;
 import com.cxxwl96.autoanswer.enums.UserAgentType;
+
 import lombok.Data;
 
 /**

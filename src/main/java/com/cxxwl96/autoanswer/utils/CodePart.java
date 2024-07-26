@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.cxxwl96.autoanswer.utils;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Random;
 
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.lang.func.Func0;
 import cn.hutool.core.lang.func.VoidFunc0;
 import lombok.extern.slf4j.Slf4j;
-
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Random;
 
 /**
  * CodePart
@@ -60,8 +61,8 @@ public class CodePart {
      * milliseconds毫秒之后执行
      *
      * @param milliseconds 时间毫秒
-     * @param async        是否异步
-     * @param callback     执行回调
+     * @param async 是否异步
+     * @param callback 执行回调
      */
     public static void onTimeout(long milliseconds, boolean async, VoidFunc0 callback) {
         VoidFunc0 delayedCallback = () -> {
@@ -82,9 +83,9 @@ public class CodePart {
     /**
      * 每隔milliseconds毫秒执行一次
      *
-     * @param milliseconds  时间毫秒
-     * @param async         是否异步
-     * @param callback      执行回调
+     * @param milliseconds 时间毫秒
+     * @param async 是否异步
+     * @param callback 执行回调
      * @param stopCondition 停止执行条件
      */
     public static void onInterval(long milliseconds, boolean async, VoidFunc0 callback, Func0<Boolean> stopCondition) {
@@ -107,9 +108,9 @@ public class CodePart {
     /**
      * 重试
      *
-     * @param times        重试次数
+     * @param times 重试次数
      * @param milliseconds 间隔时间：毫秒
-     * @param callback     回调
+     * @param callback 回调
      */
     public static void retryWithRuntimeException(int times, long milliseconds, VoidFunc0 callback) {
         try {
@@ -122,9 +123,9 @@ public class CodePart {
     /**
      * 重试
      *
-     * @param times        重试次数
+     * @param times 重试次数
      * @param milliseconds 间隔时间：毫秒
-     * @param callback     回调
+     * @param callback 回调
      * @throws Exception 调用异常
      */
     public static void retry(int times, long milliseconds, VoidFunc0 callback) throws Exception {
@@ -137,10 +138,10 @@ public class CodePart {
     /**
      * 重试
      *
-     * @param times        重试次数
+     * @param times 重试次数
      * @param milliseconds 间隔时间：毫秒
-     * @param callback     回调
-     * @param <T>          结果类型
+     * @param callback 回调
+     * @param <T> 结果类型
      * @return 结果
      */
     public static <T> T retryWithRuntimeException(int times, long milliseconds, Func0<T> callback) {
@@ -154,10 +155,10 @@ public class CodePart {
     /**
      * 重试
      *
-     * @param times        重试次数
+     * @param times 重试次数
      * @param milliseconds 间隔时间：毫秒
-     * @param callback     回调
-     * @param <T>          结果类型
+     * @param callback 回调
+     * @param <T> 结果类型
      * @return 结果
      * @throws Exception 调用异常
      */
@@ -178,12 +179,11 @@ public class CodePart {
         throw exception == null ? new RuntimeException("Failed to retry " + times + " times") : exception;
     }
 
-
     /**
      * 从范围内随机取一个数。
      *
      * @param start the start
-     * @param end   the end
+     * @param end the end
      * @return 数据范围内的随机数
      */
     public static int nextInRange(int start, int end) {
