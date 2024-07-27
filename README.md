@@ -1,6 +1,8 @@
 # auto-answer
 auto answer by custom rules.
 
+> chrome-for-testing: https://googlechromelabs.github.io/chrome-for-testing/#stable
+ 
 > open -a /Applications/Google\ Chrome.app/ --args --proxy-server=115.223.31.36:34640 http://www.baidu.com https://www.ip138.com
 
 ```text
