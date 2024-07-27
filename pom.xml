@@ -79,12 +79,6 @@
             <version>2.6.0</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.teamdev.jxbrowser</groupId>
-            <artifactId>jxbrowser-javafx</artifactId>
-            <version>7.12.2</version>
-        </dependency>
-
         <!--Chrome-->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
