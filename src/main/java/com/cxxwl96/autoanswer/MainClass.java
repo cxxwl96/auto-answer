@@ -22,15 +22,12 @@ import com.cxxwl96.autoanswer.utils.SeleniumUtil;
 import com.jfoenix.assets.JFoenixResources;
 import com.jfoenix.svg.SVGGlyphLoader;
 
-import java.io.File;
 import java.io.IOException;
 
-import cn.hutool.core.util.ZipUtil;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -66,10 +63,7 @@ public class MainClass extends Application {
      */
     private void loadResourcesBeforeLaunch() {
         // 启动前加载
-        new Thread(() -> {
-            loadSvgResources();
-            unzipBin();
-        }).start();
+        new Thread(this::loadSvgResources).start();
     }
 
     /**
@@ -81,17 +75,6 @@ public class MainClass extends Application {
             SVGGlyphLoader.loadGlyphsFont(JFoenixResources.load("/assets/fonts/IconFont/icomoon.svg").openStream(), "icon.svg");
         } catch (IOException exception) {
             log.error(exception.getMessage(), exception);
-        }
-    }
-
-    @SneakyThrows
-    private void unzipBin() {
-        File targetFile = new File("./bin");
-        if (!targetFile.exists()) {
-            File originFile = new File("./resources/bin.zip");
-            log.info("unzip {} to {}", originFile.getCanonicalPath(), targetFile.getCanonicalPath());
-            ZipUtil.unzip(originFile, targetFile);
-            log.info("unzip {} to {} success", originFile.getCanonicalPath(), targetFile.getCanonicalPath());
         }
     }
 }
