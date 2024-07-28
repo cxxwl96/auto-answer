@@ -21,37 +21,14 @@ import java.util.List;
 import lombok.Data;
 
 /**
- * 问卷
+ * 一份问卷答案
  *
  * @author cxxwl96
- * @since 2024/3/3 00:44
+ * @since 2024/07/28 21:15
  */
 @Data
 public class Survey {
-    private String id;
+    private String name;
 
-    private String url;
-
-    private String domain;
-
-    // 问卷标题
-    private String topic;
-
-    // 描述
-    private String description;
-
-    // 题目
     private List<Subject> subjects;
-
-    // 问卷数量
-    private int count;
-
-    // 是否指定代理
-    private boolean assignProxy;
-
-    // 省
-    private String province;
-
-    // 市
-    private String city;
 }

@@ -25,7 +25,6 @@ import com.cxxwl96.autoanswer.ipproxy.CityCode;
 import com.cxxwl96.autoanswer.ipproxy.IpProxy;
 import com.cxxwl96.autoanswer.ipproxy.ResultBody;
 import com.cxxwl96.autoanswer.model.Result;
-import com.cxxwl96.autoanswer.model.SubjectAnswer;
 import com.cxxwl96.autoanswer.model.SubmitInfo;
 import com.cxxwl96.autoanswer.model.Survey;
 import com.cxxwl96.autoanswer.utils.CodePart;
@@ -49,6 +48,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.resource.ResourceUtil;
@@ -80,15 +80,9 @@ public class SurveyExecutor implements Callable<Result<?>> {
 
     private final TextAreaLog logger = TextAreaLog.getLogger(log);
 
-    // 问卷
-    private final Survey survey;
-
     // 问卷答案
-    private final List<SubjectAnswer> subjectAnswers;
-
-    // 当前问卷答案索引
     @Getter
-    private final int index;
+    private final Survey survey;
 
     // 脚本
     private final Script script;
@@ -98,12 +92,10 @@ public class SurveyExecutor implements Callable<Result<?>> {
 
     private Consumer<AnswerState> doneConsumer;
 
-    public SurveyExecutor(Survey survey, List<SubjectAnswer> subjectAnswers, int index, Script script, SubmitInfo submitInfo) {
-        this.survey = survey;
-        this.subjectAnswers = subjectAnswers;
-        this.index = index;
-        this.script = script;
+    public SurveyExecutor(SubmitInfo submitInfo, Survey survey) {
         this.submitInfo = submitInfo;
+        this.survey = survey;
+        this.script = AutoAnswerContext.getScript(submitInfo.getDomain());
     }
 
     @Override
@@ -111,7 +103,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         AnswerState state = AnswerState.STOP;
         WebDriver driver = null;
         try {
-            logger.info("[提交问卷]打开第" + index + "份问卷");
+            logger.info("[提交问卷]打开" + survey.getName() + "问卷");
             // 创建WebDriver
             driver = SeleniumUtil.newChromeDriver(getChromeOptions());
             UserSetting userSetting = AutoAnswerContext.getUserSetting();
@@ -127,7 +119,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
 
             if ("OK".equals(result)) {
                 state = AnswerState.SUCCESS;
-                logger.success("[提交问卷]提交第" + index + "份问卷成功");
+                logger.success("[提交问卷]提交" + survey.getName() + "成功");
                 if (submitInfo.isAutoClose()) {
                     CodePart.sleep(EXECUTE_SUBMIT_AFTER_MS);
                     SeleniumUtil.quit(driver); // 关闭浏览器
@@ -135,13 +127,13 @@ public class SurveyExecutor implements Callable<Result<?>> {
                 return Result.success();
             } else {
                 state = AnswerState.FAILED;
-                logger.error("[提交问卷]提交第" + index + "份问卷失败：" + result);
+                logger.error("[提交问卷]提交" + survey.getName() + "失败：" + result);
                 return Result.failed(String.valueOf(result));
             }
         } catch (InterruptedException exception) {
             SeleniumUtil.quit(driver);
             state = AnswerState.STOP;
-            return Result.failed("停止第" + index + "份问卷");
+            return Result.failed("停止" + survey.getName());
         } catch (Error error) {
             state = AnswerState.FAILED;
             log.error(error.getMessage(), error);
@@ -150,10 +142,10 @@ public class SurveyExecutor implements Callable<Result<?>> {
             state = AnswerState.FAILED;
             if (exception instanceof TimeoutException) {
                 log.warn("打开页面超时");
-                logger.error("[提交问卷]提交第" + index + "份问卷失败：打开页面超时");
+                logger.error("[提交问卷]提交" + survey.getName() + "失败：打开页面超时");
                 return Result.failed("打开页面超时");
             }
-            logger.error("[提交问卷]提交第" + index + "份问卷失败：" + new Scanner(exception.getMessage()).nextLine());
+            logger.error("[提交问卷]提交" + survey.getName() + "失败：" + new Scanner(exception.getMessage()).nextLine());
             log.error("{}:{}", exception.getClass().getName(), exception.getMessage(), exception);
             return Result.failed(exception.getMessage());
         } finally {
@@ -212,7 +204,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
             return null;
         }
         List<ResultBody.Server> servers = result.getList();
-        if (servers != null && servers.size() > 0) {
+        if (CollUtil.isNotEmpty(servers)) {
             ResultBody.Server server = servers.get(0);
             return server.getSever() + ":" + server.getPort();
         }
@@ -234,7 +226,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         }
         List<String> lines = FileUtil.readUtf8Lines(new File(path));
         List<String> userAgents = lines.stream().filter(StrUtil::isNotBlank).collect(Collectors.toList());
-        if (userAgents.size() == 0) {
+        if (userAgents.isEmpty()) {
             return null;
         }
         int index = CodePart.nextInRange(0, userAgents.size() - 1);
@@ -267,7 +259,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         CodePart.onInterval(EXECUTE_SCRIPT_INTERVAL_MS, false, () -> {
             long seconds = LocalDateTimeUtil.between(LocalDateTime.now(), future).getSeconds();
             executeScriptNoneException(executor, "$('#executor-loading-time')[0].innerText=" + seconds);
-            executeScriptNoneException(executor, "$('#executor-loading-index')[0].innerText=" + index);
+            executeScriptNoneException(executor, "$('#executor-loading-index')[0].innerText=" + survey.getName());
         }, () -> LocalDateTime.now().isAfter(future));
     }
 
@@ -279,7 +271,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         int pageLoadTimeout = NumberUtil.parseInt(pageLoadTimeoutString);
         driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(pageLoadTimeout));
         // 打开问卷
-        driver.get(survey.getUrl());
+        driver.get(submitInfo.getUrl());
         // 执行answer-box脚本
         String script = ResourceUtil.readUtf8Str(EXECUTOR_WINDOW_JS);
         CodePart.onTimeout(EXECUTE_SCRIPT_AFTER_MS, false, () -> executeScriptNoneException(executor, script));
@@ -296,7 +288,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         CodePart.onInterval(EXECUTE_SCRIPT_INTERVAL_MS, false, () -> {
             long seconds = LocalDateTimeUtil.between(LocalDateTime.now(), future).getSeconds();
             // 更新标题，避免在浮窗出现前更新，所以放在循环执行
-            executeScriptNoneException(executor, "$('#executor-window-index')[0].innerText = '" + index + "';");
+            executeScriptNoneException(executor, "$('#executor-window-index')[0].innerText = '" + survey.getName() + "';");
             executeScriptNoneException(executor, "$('#executor-window-time')[0].innerText = '" + seconds + "';");
         }, () -> LocalDateTime.now().isAfter(future));
     }
@@ -307,7 +299,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         // 执行submit脚本
         String script = this.script.getExecutorScript(); // 填写问卷脚本
         CodePart.sleep(EXECUTE_SCRIPT_AFTER_MS);
-        Object obj = executor.executeScript(script, JSON.toJSONString(survey), JSON.toJSONString(subjectAnswers));
+        Object obj = executor.executeScript(script, JSON.toJSONString(submitInfo), JSON.toJSONString(survey));
         String result = String.valueOf(obj);
         if (!"OK".equals(result)) {
             executeScriptNoneException(executor, "$('#inject-box-msg')[0].innerText = '填写问卷失败：" + result + "';");
@@ -323,7 +315,7 @@ public class SurveyExecutor implements Callable<Result<?>> {
         Object obj = executor.executeScript(script, submitInfo.isAutoSubmit());
         String result = String.valueOf(obj);
         if (!"OK".equals(result)) {
-            executeScriptNoneException(executor, "$('#inject-box-msg')[0].innerText = '提交第" + index + "份问卷失败：" + result + "';");
+            executeScriptNoneException(executor, "$('#inject-box-msg')[0].innerText = '提交" + survey.getName() + "失败：" + result + "';");
         }
         return result;
     }

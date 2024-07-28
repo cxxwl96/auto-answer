@@ -11,9 +11,8 @@ var bodyInner = `
 <div style="width: 100%; height:100vh; background-color: #222728; color: #ffffff; line-height: 100vh;">
     <p style="margin: 0; text-align: center; font-size: 18px">
         <span id="executor-loading-time" style="color: red; font-weight: bold"></span>
-        s后自动打开第
+        s后自动打开
         <span id="executor-loading-index" style="color: red; font-weight: bold"></span>
-        份问卷
     </p>
 </div>
 `;

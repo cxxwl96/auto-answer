@@ -19,6 +19,9 @@ package com.cxxwl96.autoanswer.model;
 import com.cxxwl96.autoanswer.enums.ProxyType;
 import com.cxxwl96.autoanswer.enums.UserAgentType;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.Data;
 
 /**
@@ -29,15 +32,33 @@ import lombok.Data;
  */
 @Data
 public class SubmitInfo {
+    // 域
+    private String domain;
+
+    // 问卷链接
+    private String url;
+
+    // xlsx文件路径
+    private String xlsxPath;
+
+    // 代理类型
     private ProxyType proxyType;
 
+    // 省
     private String province;
 
+    // 市
     private String city;
 
+    // 用户代理类型
     private UserAgentType userAgentType;
 
+    // 是否自动提交问卷
     private boolean autoSubmit;
 
+    // 提交后成功后是否自动关闭浏览器
     private boolean autoClose;
+
+    // n份问卷答案
+    private List<Survey> surveys = new ArrayList<>();
 }

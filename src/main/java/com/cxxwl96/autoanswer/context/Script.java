@@ -27,11 +27,6 @@ import lombok.Data;
 @Data
 public class Script {
     /**
-     * 解析题目脚本
-     */
-    private String parserScript;
-
-    /**
      * 填写问卷脚本
      */
     private String executorScript;

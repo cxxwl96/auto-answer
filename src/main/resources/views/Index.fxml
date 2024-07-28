@@ -21,7 +21,7 @@
         <padding>
             <Insets bottom="10.0" left="15.0" right="15.0" top="25.0"/>
         </padding>
-        <VBox styleClass="card-pane">
+        <VBox styleClass="card-pane" spacing="10.0">
             <HBox spacing="10.0">
                 <HBox alignment="CENTER_LEFT" spacing="5.0">
                     <Label text="域:"/>
@@ -29,21 +29,17 @@
                 </HBox>
                 <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
                     <Label text="链接:"/>
-                    <JFXTextField fx:id="linkText" promptText="http:///..." HBox.hgrow="ALWAYS"/>
-                </HBox>
-                <HBox alignment="CENTER_LEFT" spacing="5.0">
-                    <JFXButton fx:id="parseBtn" mnemonicParsing="false" text="解析问卷" onAction="#onParse"/>
+                    <JFXTextField fx:id="urlText" promptText="http:///..." HBox.hgrow="ALWAYS"/>
                 </HBox>
             </HBox>
-        </VBox>
-        <VBox styleClass="card-pane">
             <HBox spacing="10.0">
                 <HBox alignment="CENTER_LEFT" spacing="5.0" HBox.hgrow="ALWAYS">
-                    <Label text="链接ID:"/>
-                    <JFXTextField fx:id="linkIdText" promptText="解析问卷成功后自动生成" HBox.hgrow="ALWAYS"/>
+                    <Label text="答案:"/>
+                    <JFXTextField fx:id="pathText" promptText="选择xlsx文件" HBox.hgrow="ALWAYS"/>
                 </HBox>
                 <HBox alignment="CENTER_LEFT" spacing="5.0">
-                    <JFXButton fx:id="ruleBtn" onAction="#onRule" mnemonicParsing="false" text="填写规则"/>
+                    <JFXButton mnemonicParsing="false" text="选择文件" onAction="#onSelectFile"/>
+                    <JFXButton mnemonicParsing="false" text="下载模版" onAction="#onDownloadTemplate" styleClass="jfx-button-flat"/>
                 </HBox>
             </HBox>
         </VBox>

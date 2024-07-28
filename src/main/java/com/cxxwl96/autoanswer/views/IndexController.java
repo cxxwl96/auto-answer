@@ -27,16 +27,18 @@ import com.cxxwl96.autoanswer.utils.Alert;
 import com.cxxwl96.autoanswer.utils.ApplicationStore;
 import com.cxxwl96.autoanswer.utils.Confirm;
 import com.cxxwl96.autoanswer.utils.FXMLUtil;
+import com.cxxwl96.autoanswer.utils.FileSelector;
 import com.cxxwl96.autoanswer.utils.SeleniumUtil;
 import com.cxxwl96.autoanswer.utils.TextAreaLog;
 import com.cxxwl96.updater.client.UpdaterClient;
 import com.cxxwl96.updater.client.model.PropertyKeys;
-import com.jfoenix.controls.JFXButton;
 import com.jfoenix.controls.JFXCheckBox;
 import com.jfoenix.controls.JFXComboBox;
 import com.jfoenix.controls.JFXRadioButton;
 import com.jfoenix.controls.JFXTextField;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.Optional;
@@ -67,6 +69,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.text.TextFlow;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -80,16 +83,10 @@ public class IndexController implements Initializable {
     private JFXComboBox<Label> domainSelect;
 
     @FXML
-    private JFXTextField linkText;
+    private JFXTextField urlText;
 
     @FXML
-    private JFXButton parseBtn;
-
-    @FXML
-    private JFXTextField linkIdText;
-
-    @FXML
-    private JFXButton ruleBtn;
+    private JFXTextField pathText;
 
     @FXML
     private ToggleGroup proxyTG;
@@ -135,6 +132,34 @@ public class IndexController implements Initializable {
         initLogger();
     }
 
+    private void initDomainSelect() {
+        Set<String> domains = AutoAnswerContext.getScriptMap().keySet();
+        List<Label> domainList = domains.stream().map(domain -> {
+            Label label = new Label();
+            label.setText(domain);
+            return label;
+        }).collect(Collectors.toList());
+        domainSelect.setItems(FXCollections.observableArrayList(domainList));
+        domainSelect.getSelectionModel().selectFirst();
+    }
+
+    private void initProxyAddress() {
+        // 可见性绑定
+        provinceHBox.visibleProperty().bindBidirectional(assignProxy.selectedProperty());
+        cityHBox.visibleProperty().bindBidirectional(assignProxy.selectedProperty());
+        // 初始化省
+        ObservableList<Label> provinceList = FXCollections.observableArrayList(
+            CityCode.getProvinces().stream().map(Label::new).collect(Collectors.toList()));
+        provinceSelect.setItems(provinceList);
+        provinceSelect.getSelectionModel().selectFirst();
+        // 初始化市
+        String provinceName = provinceSelect.getSelectionModel().getSelectedItem().getText();
+        ObservableList<Label> cityList = FXCollections.observableArrayList(
+            CityCode.getCities(provinceName).stream().map(Label::new).collect(Collectors.toList()));
+        citySelect.setItems(cityList);
+        citySelect.getSelectionModel().selectFirst();
+    }
+
     private void initLogger() {
         TextAreaLog.TEXT_FLOW = textFlow;
 
@@ -160,34 +185,6 @@ public class IndexController implements Initializable {
                 contextMenu.show(scrollPane, event.getScreenX(), event.getScreenY());
             }
         });
-    }
-
-    private void initProxyAddress() {
-        // 可见性绑定
-        provinceHBox.visibleProperty().bindBidirectional(assignProxy.selectedProperty());
-        cityHBox.visibleProperty().bindBidirectional(assignProxy.selectedProperty());
-        // 初始化省
-        ObservableList<Label> provinceList = FXCollections.observableArrayList(
-            CityCode.getProvinces().stream().map(Label::new).collect(Collectors.toList()));
-        provinceSelect.setItems(provinceList);
-        provinceSelect.getSelectionModel().selectFirst();
-        // 初始化市
-        String provinceName = provinceSelect.getSelectionModel().getSelectedItem().getText();
-        ObservableList<Label> cityList = FXCollections.observableArrayList(
-            CityCode.getCities(provinceName).stream().map(Label::new).collect(Collectors.toList()));
-        citySelect.setItems(cityList);
-        citySelect.getSelectionModel().selectFirst();
-    }
-
-    private void initDomainSelect() {
-        Set<String> domains = AutoAnswerContext.getScriptMap().keySet();
-        List<Label> domainList = domains.stream().map(domain -> {
-            Label label = new Label();
-            label.setText(domain);
-            return label;
-        }).collect(Collectors.toList());
-        domainSelect.setItems(FXCollections.observableArrayList(domainList));
-        domainSelect.getSelectionModel().selectFirst();
     }
 
     @SneakyThrows
@@ -227,25 +224,20 @@ public class IndexController implements Initializable {
     }
 
     @FXML
-    private void onParse(ActionEvent event) {
-        String domain = getDomain();
-        String url = linkText.getText();
+    private void onSelectFile(ActionEvent event) {
+        File file = FileSelector.chooseFile(new FileChooser.ExtensionFilter("Xlsx", "*.xlsx"));
         try {
-            String id = surveyService.parseSurvey(domain, url);
-            linkIdText.setText(id);
-        } catch (Exception exception) {
-            Alert.error(exception.getMessage());
+            if (file != null) {
+                pathText.setText(file.getCanonicalPath());
+            }
+        } catch (IOException e) {
+            Alert.error(e.getMessage());
         }
     }
 
     @FXML
-    private void onRule(ActionEvent event) {
-        String id = linkIdText.getText();
-        try {
-            surveyService.editRule(id);
-        } catch (Exception exception) {
-            Alert.error(exception.getMessage());
-        }
+    private void onDownloadTemplate(ActionEvent event) {
+        FileSelector.saveFile(new File("./resources/template.xlsx"));
     }
 
     @FXML
@@ -260,30 +252,28 @@ public class IndexController implements Initializable {
 
     @FXML
     private void onSubmit() {
-        String domain = getDomain();
-        String id = linkIdText.getText();
-        String proxyName = proxyTG.getSelectedToggle().getUserData().toString();
-        ProxyType proxyType = ProxyType.valueOf(proxyName);
-        String province = provinceSelect.getSelectionModel().getSelectedItem().getText();
-        String city = citySelect.getSelectionModel().getSelectedItem().getText();
-        String userAgentName = userAgentTG.getSelectedToggle().getUserData().toString();
-        UserAgentType userAgentType = UserAgentType.valueOf(userAgentName);
-        boolean isAutoSubmit = autoSubmit.isSelected();
-        boolean isAutoClose = autoClose.isSelected();
-
-        SubmitInfo submitInfo = new SubmitInfo();
-        submitInfo.setProxyType(proxyType);
-        submitInfo.setProvince(province);
-        submitInfo.setCity(city);
-        submitInfo.setUserAgentType(userAgentType);
-        submitInfo.setAutoSubmit(isAutoSubmit);
-        submitInfo.setAutoClose(isAutoClose);
-
         try {
-            surveyService.submit(domain, id, submitInfo);
+            surveyService.submit(buildSubmitInfo());
         } catch (Exception exception) {
             Alert.error(exception.getMessage());
         }
+    }
+
+    private SubmitInfo buildSubmitInfo() {
+        SubmitInfo submitInfo = new SubmitInfo();
+        submitInfo.setDomain(Optional.ofNullable(domainSelect.getSelectionModel())
+            .map(SingleSelectionModel::getSelectedItem)
+            .map(Label::getText)
+            .orElse(null));
+        submitInfo.setUrl(urlText.getText());
+        submitInfo.setXlsxPath(pathText.getText());
+        submitInfo.setProxyType(ProxyType.valueOf(proxyTG.getSelectedToggle().getUserData().toString()));
+        submitInfo.setProvince(provinceSelect.getSelectionModel().getSelectedItem().getText());
+        submitInfo.setCity(citySelect.getSelectionModel().getSelectedItem().getText());
+        submitInfo.setUserAgentType(UserAgentType.valueOf(userAgentTG.getSelectedToggle().getUserData().toString()));
+        submitInfo.setAutoSubmit(autoSubmit.isSelected());
+        submitInfo.setAutoClose(autoClose.isSelected());
+        return submitInfo;
     }
 
     @FXML
@@ -301,12 +291,5 @@ public class IndexController implements Initializable {
             logger.warn("关闭所有浏览器");
             new Thread(SeleniumUtil::quitAll).start();
         }).warn("正在答题的浏览器也将被关闭，确认关闭？");
-    }
-
-    private String getDomain() {
-        return Optional.ofNullable(domainSelect.getSelectionModel())
-            .map(SingleSelectionModel::getSelectedItem)
-            .map(Label::getText)
-            .orElse(null);
     }
 }

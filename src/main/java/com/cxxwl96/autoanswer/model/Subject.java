@@ -16,12 +16,10 @@
 
 package com.cxxwl96.autoanswer.model;
 
-import java.util.List;
-
 import lombok.Data;
 
 /**
- * 题目
+ * 一个题目
  *
  * @author cxxwl96
  * @since 2024/3/3 00:45
@@ -29,23 +27,11 @@ import lombok.Data;
 @Data
 public class Subject {
     // 题目编号
-    private int no;
+    private String no;
 
     // 题目类型
-    private String type;
+    private SubjectType type;
 
-    // 题目问题
-    private String question;
-
-    // 是否必答题
-    private boolean require = true;
-
-    // 多选题选项个数范围
-    private int atLeastBegin = 0;
-
-    // 多选题选项个数范围
-    private int atLeastEnd = 0;
-
-    // 选项
-    private List<Option> options;
+    // 答案
+    private String answer;
 }

@@ -16,16 +16,40 @@
 
 package com.cxxwl96.autoanswer.model;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
+import java.util.Arrays;
+
+import cn.hutool.core.util.StrUtil;
+import lombok.Getter;
+
 /**
  * SubjectType
  *
  * @author cxxwl96
  * @since 2024/3/10 21:59
  */
-public class SubjectType {
-    public static final String SINGLE_CHOICE = "单选题";
+public enum SubjectType {
+    SINGLE_CHOICE("单选题"),
 
-    public static final String MULTIPLE_CHOICE = "多选题";
+    MULTIPLE_CHOICE("多选题"),
 
-    public static final String GAP_FILLING = "填空题";
+    GAP_FILLING("填空题"),
+    ;
+
+    @Getter
+    @JsonValue
+    private final String name;
+
+    SubjectType(String name) {
+        this.name = name;
+    }
+
+    public static SubjectType getByName(String name) {
+        return Arrays.stream(values()).filter(type -> type.equalsName(name)).findAny().orElse(null);
+    }
+
+    public boolean equalsName(String name) {
+        return StrUtil.equals(getName(), name);
+    }
 }

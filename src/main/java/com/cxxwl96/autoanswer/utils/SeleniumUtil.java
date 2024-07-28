@@ -38,8 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 public class SeleniumUtil {
     private static final Set<WebDriver> WEB_DRIVERS = new HashSet<>();
 
-    private static String chromeBin;
-
     /**
      * 新建Chrome驱动
      *
@@ -75,7 +73,7 @@ public class SeleniumUtil {
      * 关掉所有driver
      */
     public static void quitAll() {
-        // TODO WEB_DRIVERS.clear();
+        // TODO 定时清空 WEB_DRIVERS.clear();
         for (WebDriver webDriver : WEB_DRIVERS) {
             try {
                 webDriver.quit();

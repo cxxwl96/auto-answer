@@ -43,11 +43,10 @@ import lombok.Getter;
  * @author cxxwl96
  * @since 2022/11/3 23:01
  */
+@Getter
 public class Message {
-    @Getter
     private final JFXAlert<String> alert;
 
-    @Getter
     private final Collection<Node> actions = new ArrayList<>();
 
     public Message() {

@@ -4,7 +4,7 @@ jqScriptEl.setAttribute('src', 'https://cdn.staticfile.org/jquery/1.10.2/jquery.
 document.querySelector('body').appendChild(jqScriptEl);
 
 var ulEl = `<ul id="executor-window" style="background-color: #00de76;width: 300px;position: fixed;top: 10px;right: 10px;padding: 10px;z-index: 9999;box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.2);">
-                                <li>当前问卷：第<span id="executor-window-index" style="color: red; font-weight: bold">0</span>份</li>
+                                <li>当前问卷：<span id="executor-window-index" style="color: red; font-weight: bold"></span></li>
                                 <li id="executor-window-address">归属地：</li>
                                 <li id="executor-window-isp">运营商：</li>
                                 <li id="executor-window-ip">IP：</li>

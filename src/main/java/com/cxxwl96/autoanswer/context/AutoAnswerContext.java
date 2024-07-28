@@ -17,21 +17,19 @@
 package com.cxxwl96.autoanswer.context;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.TypeReference;
-import com.cxxwl96.autoanswer.model.SubjectAnswer;
-import com.cxxwl96.autoanswer.model.Survey;
+import com.cxxwl96.autoanswer.model.SubmitInfo;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
@@ -62,21 +60,9 @@ public class AutoAnswerContext {
      */
     private static volatile UserSetting userSetting;
 
-    /**
-     * 问卷
-     */
-    private static final Map<String, Survey> SURVEY_MAP = new HashMap<>();
-
-    /**
-     * 问卷答案
-     */
-    private static final Map<String, List<List<SubjectAnswer>>> SURVEY_ANSWER_MAP = new HashMap<>();
-
     private static final Setting SETTING = new Setting();
 
     private static final String FILE_CONF_SCRIPTS = "conf/scripts";
-
-    private static final String FILE_CONF_SCRIPTS_PARSER = "/parser.js";
 
     private static final String FILE_CONF_SCRIPTS_EXECUTOR = "/executor.js";
 
@@ -214,65 +200,6 @@ public class AutoAnswerContext {
         FileUtil.writeUtf8String(JSON.toJSONString(userSetting), file);
     }
 
-    public static void saveSurvey(Survey survey) {
-        SURVEY_MAP.put(survey.getId(), survey);
-        FileUtil.writeUtf8String(JSON.toJSONString(survey), new File(FILE_SURVEY + survey.getId() + ".json"));
-    }
-
-    public static Survey getSurvey(String id) {
-        Survey survey = SURVEY_MAP.get(id);
-        if (survey == null) {
-            File file = new File(FILE_SURVEY + id + ".json");
-            if (file.exists()) {
-                try {
-                    String read = FileUtil.readUtf8String(file);
-                    return JSON.parseObject(read, Survey.class);
-                } catch (Exception exception) {
-                    log.error(exception.getMessage(), exception);
-                }
-            }
-        }
-        return survey;
-    }
-
-    public static void saveSurveyAnswers(String id, List<List<SubjectAnswer>> surveyAnswers) {
-        String filename = id + FILE_SURVEY_ANSWERS_SUFFIX;
-        SURVEY_ANSWER_MAP.put(filename, surveyAnswers);
-        FileUtil.writeUtf8String(JSON.toJSONString(surveyAnswers), new File(FILE_SURVEY + filename + ".json"));
-    }
-
-    public static List<List<SubjectAnswer>> getSurveyAnswers(String id) {
-        String filename = id + FILE_SURVEY_ANSWERS_SUFFIX;
-        List<List<SubjectAnswer>> surveyAnswers = SURVEY_ANSWER_MAP.get(filename);
-        if (surveyAnswers == null) {
-            File file = new File(FILE_SURVEY + filename + ".json");
-            if (file.exists()) {
-                try {
-                    String read = FileUtil.readUtf8String(file);
-                    return JSON.parseObject(read, new TypeReference<List<List<SubjectAnswer>>>() {
-                    });
-                } catch (Exception exception) {
-                    log.error(exception.getMessage(), exception);
-                }
-            }
-        }
-        return surveyAnswers;
-    }
-
-    public static void removeSurveyAnswers(String id) {
-        String filename = id + FILE_SURVEY_ANSWERS_SUFFIX;
-        SURVEY_ANSWER_MAP.remove(filename);
-        File file = new File(filename);
-        if (file.exists()) {
-            try {
-                FileUtil.del(file);
-            } catch (IORuntimeException exception) {
-                log.error(exception.getMessage(), exception);
-                FileUtil.writeUtf8String(StrUtil.EMPTY, file);
-            }
-        }
-    }
-
     public static Map<String, Script> getScriptMap() {
         if (scriptMap == null) {
             synchronized (AutoAnswerContext.class) {
@@ -291,16 +218,13 @@ public class AutoAnswerContext {
                         } catch (IOException exception) {
                             throw new RuntimeException(exception);
                         }
-                        String parserScript = FileUtil.readUtf8String(domainPath + FILE_CONF_SCRIPTS_PARSER);
                         String executorScript = FileUtil.readUtf8String(domainPath + FILE_CONF_SCRIPTS_EXECUTOR);
                         String submitScript = FileUtil.readUtf8String(domainPath + FILE_CONF_SCRIPTS_SUBMIT);
 
-                        Assert.notBlank(parserScript, "parser.js script must be blank");
                         Assert.notBlank(executorScript, "executor.js script must be blank");
                         Assert.notBlank(submitScript, "submit.js script must be blank");
 
                         Script script = new Script();
-                        script.setParserScript(parserScript);
                         script.setExecutorScript(executorScript);
                         script.setSubmitScript(submitScript);
 
@@ -310,5 +234,10 @@ public class AutoAnswerContext {
             }
         }
         return scriptMap;
+    }
+
+    public static void saveSubmitInfo(SubmitInfo submitInfo) {
+        FileUtil.writeUtf8String(JSON.toJSONString(submitInfo),
+            new File(FILE_SURVEY + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + "_submit.json"));
     }
 }
